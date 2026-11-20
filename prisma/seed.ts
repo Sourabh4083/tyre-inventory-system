@@ -1,5 +1,5 @@
 /**
- * Seeds demo accounts, business settings, tyre categories, the usual tyre-shop services and a
+ * Seeds demo accounts, business settings, product-type categories, the usual tyre-shop services and a
  * few sample tyres so a new install has something to bill. A real shop's stock is added from the
  * app (or, later, imported from the company price list).
  *
@@ -20,15 +20,17 @@ const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: proc
 const OWNER_PASSWORD = process.env.SEED_OWNER_PASSWORD ?? "Owner@Tyre2026!";
 const MANAGER_PASSWORD = process.env.SEED_MANAGER_PASSWORD ?? "Manager@Tyre2026!";
 
-/** Tyre categories need a size on every product; tubes, flaps and other items don't. */
+/**
+ * Categories are product types. Which vehicle a tyre fits (car, two-wheeler, truck, ...) is the tyre's
+ * own Vehicle field, so the two never repeat each other. Tyres need a size; the rest don't.
+ */
 const CATEGORIES: { name: string; isTyre: boolean }[] = [
-  { name: "Car & Jeep Tyres", isTyre: true },
-  { name: "Two-Wheeler Tyres", isTyre: true },
-  { name: "Three-Wheeler Tyres", isTyre: true },
-  { name: "LCV / SCV Tyres", isTyre: true },
-  { name: "Truck & Bus Tyres", isTyre: true },
-  { name: "Tractor Tyres", isTyre: true },
-  { name: "Tubes & Flaps", isTyre: false },
+  { name: "Tyres", isTyre: true },
+  { name: "Tubes", isTyre: false },
+  { name: "Flaps", isTyre: false },
+  { name: "Alloy Wheels", isTyre: false },
+  { name: "Batteries", isTyre: false },
+  { name: "Accessories", isTyre: false },
   { name: "Other", isTyre: false },
 ];
 
@@ -43,7 +45,6 @@ const SERVICES: { name: string; price: number }[] = [
 
 type SeedProduct = {
   name: string;
-  category: string;
   cost: number;
   price: number | null;
   quantity: number;
@@ -57,22 +58,21 @@ type SeedProduct = {
   code?: string;
 };
 
-const CAR = "Car & Jeep Tyres";
 const PRODUCTS: SeedProduct[] = [
-  { name: "145/70 R12 Ultima Hi-Life TL", category: CAR, cost: 2571, price: 2950, quantity: 4, size: "145/70 R12", pattern: "Ultima Hi-Life", vehicle: "CAR_JEEP", tube: "TL" },
-  { name: "145/80 R12 Taximax TL", category: CAR, cost: 2794, price: 3200, quantity: 6, size: "145/80 R12", pattern: "Taximax", vehicle: "CAR_JEEP", tube: "TL" },
-  { name: "155/65 R12 Ultima LXT TL", category: CAR, cost: 3363, price: 3850, quantity: 2, size: "155/65 R12", pattern: "Ultima LXT", vehicle: "CAR_JEEP", tube: "TL" },
-  { name: "165/80 R14 UX Royale Puncture Guard", category: CAR, cost: 4485, price: 5150, quantity: 3, size: "165/80 R14", pattern: "UX Royale Puncture Guard", vehicle: "CAR_JEEP", tube: "TL" },
-  { name: "185/65 R15 UX Royale TL", category: CAR, cost: 5194, price: 5950, quantity: 8, size: "185/65 R15", pattern: "UX Royale", vehicle: "CAR_JEEP", tube: "TL" },
-  { name: "185/65 R15 Taximax TL", category: CAR, cost: 5197, price: 6000, quantity: 0, size: "185/65 R15", pattern: "Taximax", vehicle: "CAR_JEEP", tube: "TL" },
-  { name: "225/60 R17 UX Royale TL", category: CAR, cost: 9407, price: 10800, quantity: 2, size: "225/60 R17", pattern: "UX Royale", vehicle: "CAR_JEEP", tube: "TL" },
-  { name: "265/65 R17 Ranger H/T TL", category: CAR, cost: 11657, price: 13400, quantity: 1, size: "265/65 R17", pattern: "Ranger H/T", vehicle: "CAR_JEEP", tube: "TL" },
-  { name: "100/90-17 Blaze BR31 Rear TL", category: "Two-Wheeler Tyres", cost: 1882, price: null, quantity: 5, size: "100/90-17", pattern: "Blaze BR31", vehicle: "TWO_WHEELER", tube: "TL", fit: "REAR" },
-  { name: "90/100-10 Blaze BA21 Scooter TL", category: "Two-Wheeler Tyres", cost: 1010, price: null, quantity: 6, size: "90/100-10", pattern: "Blaze BA21", vehicle: "TWO_WHEELER", tube: "TL", fit: "ALL" },
-  { name: "4.00-8 Jumbo XR E-Rickshaw TL", category: "Three-Wheeler Tyres", cost: 1286, price: null, quantity: 4, size: "4.00-8", pattern: "Jumbo XR", vehicle: "THREE_WHEELER", tube: "TL", fit: "ALL" },
-  { name: "7.00R15 Steel King 12PR", category: "LCV / SCV Tyres", cost: 8951, price: 9225, quantity: 2, size: "7.00R15", pattern: "Steel King", vehicle: "LCV_SCV", fit: "ALL", ply: 12, nsd: 11 },
-  { name: "10.00R20 16PR JUH5", category: "Truck & Bus Tyres", cost: 25108, price: 26000, quantity: 2, size: "10.00R20", pattern: "JUH5", vehicle: "TRUCK_BUS", ply: 16 },
-  { name: "12.4-28 12PR Shresth Plus", category: "Tractor Tyres", cost: 17127, price: 18155, quantity: 1, size: "12.4-28", pattern: "Shresth Plus", vehicle: "TRACTOR", fit: "REAR", ply: 12, code: "15151120280120SHP0" },
+  { name: "145/70 R12 Ultima Hi-Life TL", cost: 2571, price: 2950, quantity: 4, size: "145/70 R12", pattern: "Ultima Hi-Life", vehicle: "CAR_JEEP", tube: "TL" },
+  { name: "145/80 R12 Taximax TL", cost: 2794, price: 3200, quantity: 6, size: "145/80 R12", pattern: "Taximax", vehicle: "CAR_JEEP", tube: "TL" },
+  { name: "155/65 R12 Ultima LXT TL", cost: 3363, price: 3850, quantity: 2, size: "155/65 R12", pattern: "Ultima LXT", vehicle: "CAR_JEEP", tube: "TL" },
+  { name: "165/80 R14 UX Royale Puncture Guard", cost: 4485, price: 5150, quantity: 3, size: "165/80 R14", pattern: "UX Royale Puncture Guard", vehicle: "CAR_JEEP", tube: "TL" },
+  { name: "185/65 R15 UX Royale TL", cost: 5194, price: 5950, quantity: 8, size: "185/65 R15", pattern: "UX Royale", vehicle: "CAR_JEEP", tube: "TL" },
+  { name: "185/65 R15 Taximax TL", cost: 5197, price: 6000, quantity: 0, size: "185/65 R15", pattern: "Taximax", vehicle: "CAR_JEEP", tube: "TL" },
+  { name: "225/60 R17 UX Royale TL", cost: 9407, price: 10800, quantity: 2, size: "225/60 R17", pattern: "UX Royale", vehicle: "CAR_JEEP", tube: "TL" },
+  { name: "265/65 R17 Ranger H/T TL", cost: 11657, price: 13400, quantity: 1, size: "265/65 R17", pattern: "Ranger H/T", vehicle: "CAR_JEEP", tube: "TL" },
+  { name: "100/90-17 Blaze BR31 Rear TL", cost: 1882, price: null, quantity: 5, size: "100/90-17", pattern: "Blaze BR31", vehicle: "TWO_WHEELER", tube: "TL", fit: "REAR" },
+  { name: "90/100-10 Blaze BA21 Scooter TL", cost: 1010, price: null, quantity: 6, size: "90/100-10", pattern: "Blaze BA21", vehicle: "TWO_WHEELER", tube: "TL", fit: "ALL" },
+  { name: "4.00-8 Jumbo XR E-Rickshaw TL", cost: 1286, price: null, quantity: 4, size: "4.00-8", pattern: "Jumbo XR", vehicle: "THREE_WHEELER", tube: "TL", fit: "ALL" },
+  { name: "7.00R15 Steel King 12PR", cost: 8951, price: 9225, quantity: 2, size: "7.00R15", pattern: "Steel King", vehicle: "LCV_SCV", fit: "ALL", ply: 12, nsd: 11 },
+  { name: "10.00R20 16PR JUH5", cost: 25108, price: 26000, quantity: 2, size: "10.00R20", pattern: "JUH5", vehicle: "TRUCK_BUS", ply: 16 },
+  { name: "12.4-28 12PR Shresth Plus", cost: 17127, price: 18155, quantity: 1, size: "12.4-28", pattern: "Shresth Plus", vehicle: "TRACTOR", fit: "REAR", ply: 12, code: "15151120280120SHP0" },
 ];
 
 /** The product columns for a sample tyre's details. */
@@ -139,7 +139,7 @@ async function main() {
         data: {
           productNumber: `PRD-${String(Number(n)).padStart(6, "0")}`,
           name: p.name,
-          categoryId: categoryId(p.category),
+          categoryId: categoryId("Tyres"),
           costPrice: p.cost.toFixed(2),
           sellingPrice: p.price === null ? null : p.price.toFixed(2),
           quantity: p.quantity,

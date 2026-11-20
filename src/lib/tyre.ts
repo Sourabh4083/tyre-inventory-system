@@ -139,15 +139,3 @@ export function tyreSpecLine(t: TyreBits): string {
     .filter(Boolean)
     .join(" · ");
 }
-
-/** A sensible vehicle type for a category name ("Car & Jeep Tyres" -> CAR_JEEP); null when unclear. */
-export function guessVehicleType(categoryName: string): VehicleType | null {
-  const n = categoryName.toLowerCase();
-  if (/car|jeep|suv|passenger/.test(n)) return "CAR_JEEP";
-  if (/two|2w|bike|scooter|motorcycle/.test(n)) return "TWO_WHEELER";
-  if (/three|3w|rickshaw|auto/.test(n)) return "THREE_WHEELER";
-  if (/lcv|scv|pickup|light commercial/.test(n)) return "LCV_SCV";
-  if (/truck|bus/.test(n)) return "TRUCK_BUS";
-  if (/tractor|farm|agri/.test(n)) return "TRACTOR";
-  return null;
-}

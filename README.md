@@ -44,8 +44,8 @@ ledger, money is handled in integer paise, and all permissions are enforced on t
   tread depth (NSD) and the company's material code. The size is tidied as it is typed (`185/65r15`
   becomes `185/65 R15`), and the rim size, radial/bias and ply rating are read from it. A new tyre's
   name is written from its details, and its brand starts as the shop's main brand from Settings.
-- **Tyre categories**: products in a tyre category need a size; tubes, flaps and other items don't. The
-  owner marks which categories hold tyres in Settings.
+- **Tyre categories**: products in a tyre category (normally just "Tyres") need a size; tubes, flaps and
+  other items don't. The owner marks which categories hold tyres in Settings.
 - **Search by size**: `185/65 R15`, `185/65r15`, `185 65 15` and `1856515` all find the same tyres, in the
   product list, on the bill screen and when ordering. A size search lists the exact size first, in-stock
   tyres before out-of-stock ones and the cheapest first, unless another sort is picked. The product list
@@ -58,8 +58,9 @@ ledger, money is handled in integer paise, and all permissions are enforced on t
 - **Low Stock** and **Out of Stock** screens, driven by a shop-wide threshold with an optional per-product
   override.
 - **Barcode**: USB scanners (type and Enter), search by code, and phone-camera scanning at `/scan`.
-- **Categories** are managed by the owner in Settings (car & jeep, two-wheeler, truck & bus, tractor,
-  tubes & flaps, ...).
+- **Categories** are product types (tyres, tubes, flaps, alloy wheels, batteries, accessories), managed
+  by the owner in Settings. Which vehicle a tyre fits is the tyre's own Vehicle field, so the two filters
+  never repeat each other.
 - **Purchase orders** (`ORD-000001`): add products to an order (new products can be created while
   ordering), mark lines received as deliveries arrive (stock goes up on receipt), and the order stays
   active until everything is received or the owner closes it. Each order has a payment method and can
@@ -214,7 +215,7 @@ src/app/actions/*               transactions, audit)
 prisma/
   schema.prisma            Data model
   migrations/              SQL migrations, including the number sequences
-  seed.ts                  Demo users, settings, tyre categories, services and sample tyres
+  seed.ts                  Demo users, settings, product-type categories, services and sample tyres
 scripts/
   db-start.ts              Starts the embedded PostgreSQL server for development
 data/
@@ -275,7 +276,7 @@ Set `SEED_OWNER_PASSWORD` and `SEED_MANAGER_PASSWORD` before seeding to use diff
 them before any real deployment.
 
 The seed is idempotent. It creates the two accounts, business settings (INR, low-stock threshold 4),
-8 tyre categories, 6 common services (fitting, alignment, balancing, puncture repair, nitrogen, tube
+7 product-type categories (Tyres, Tubes, Flaps, Alloy Wheels, Batteries, Accessories, Other), 6 common services (fitting, alignment, balancing, puncture repair, nitrogen, tube
 change) and 14 sample tyres priced from the JK Tyre dealer price list. Set the shop name, address and
 phone under Settings after the first login.
 

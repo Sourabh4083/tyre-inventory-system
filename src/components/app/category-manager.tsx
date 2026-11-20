@@ -45,8 +45,8 @@ export function CategoryManager({ categories }: { categories: Category[] }) {
         <Tags className="size-4.5 text-primary" /> Product categories
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Tap a category to mark it as a <span className="font-medium text-foreground">tyre category</span>. Products in a tyre category need a tyre size; tubes, flaps and
-        other items don&apos;t.
+        Categories are product types: tyres, tubes, flaps, alloy wheels and so on. Which vehicle a tyre fits is set on the tyre itself. Tap a category to
+        mark it as a <span className="font-medium text-foreground">tyre category</span>: its products need a tyre size.
       </p>
       <div role="group" aria-label="Tyre categories" className="mt-4 flex flex-wrap gap-2">
         {categories.map((c) => (

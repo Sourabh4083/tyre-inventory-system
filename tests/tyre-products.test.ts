@@ -21,9 +21,9 @@ beforeAll(async () => {
   const s = await seedBasics();
   owner = s.owner;
   manager = s.manager;
-  carId = (await createCategoryRow("Car & Jeep Tyres", true)).id;
-  truckId = (await createCategoryRow("Truck & Bus Tyres", true)).id;
-  tubesId = (await createCategoryRow("Tubes & Flaps", false)).id;
+  carId = (await createCategoryRow("Tyres", true)).id;
+  truckId = (await createCategoryRow("Truck Tyres", true)).id;
+  tubesId = (await createCategoryRow("Tubes", false)).id;
 });
 
 describe("tyre details on products", () => {

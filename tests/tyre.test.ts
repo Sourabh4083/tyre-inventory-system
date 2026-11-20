@@ -70,15 +70,3 @@ describe("display", () => {
     expect(tyreSpecLine({ fitment: "ALL" })).toBe("");
   });
 });
-
-describe("guessVehicleType", () => {
-  it("reads the vehicle from category names", async () => {
-    const { guessVehicleType } = await import("@/lib/tyre");
-    expect(guessVehicleType("Car & Jeep Tyres")).toBe("CAR_JEEP");
-    expect(guessVehicleType("Two-Wheeler Tyres")).toBe("TWO_WHEELER");
-    expect(guessVehicleType("LCV / SCV Tyres")).toBe("LCV_SCV");
-    expect(guessVehicleType("Truck & Bus Tyres")).toBe("TRUCK_BUS");
-    expect(guessVehicleType("Tractor Tyres")).toBe("TRACTOR");
-    expect(guessVehicleType("Tubes & Flaps")).toBeNull();
-  });
-});

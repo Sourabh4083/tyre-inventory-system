@@ -10,7 +10,7 @@ import type { ProductDTO } from "@/lib/services/products";
 import type { ProductCreateInput } from "@/lib/validation/schemas";
 import { UNITS } from "@/lib/constants";
 import { formatMoney } from "@/lib/format";
-import { CONSTRUCTIONS, FITMENTS, TUBE_TYPES, VEHICLE_TYPES, buildTyreName, guessVehicleType, parseTyreSize, sizeSearchKey } from "@/lib/tyre";
+import { CONSTRUCTIONS, FITMENTS, TUBE_TYPES, VEHICLE_TYPES, buildTyreName, parseTyreSize, sizeSearchKey } from "@/lib/tyre";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -100,7 +100,7 @@ export function ProductForm({
       tyreSize: product?.tyreSize ?? sizeFromSearch,
       brand: product ? (product.brand ?? "") : defaultBrand,
       pattern: product?.pattern ?? "",
-      vehicleType: product?.vehicleType ?? (!product && firstCategory ? (guessVehicleType(firstCategory.name) ?? "") : ""),
+      vehicleType: product?.vehicleType ?? "",
       construction: product?.construction ?? "",
       tubeType: product?.tubeType ?? "",
       fitment: product?.fitment ?? "",
@@ -138,14 +138,6 @@ export function ProductForm({
     setValue("tyreSize", parsed.size);
     if (!getValues("construction") && parsed.construction) setValue("construction", parsed.construction);
     if (!getValues("plyRating") && parsed.plyRating) setValue("plyRating", String(parsed.plyRating));
-  };
-
-  const onCategoryChange = (id: string) => {
-    const next = categories.find((c) => c.id === id);
-    if (next && !getValues("vehicleType")) {
-      const guess = guessVehicleType(next.name);
-      if (guess) setValue("vehicleType", guess);
-    }
   };
 
   const onSubmit = (values: FormValues) => {
@@ -203,7 +195,7 @@ export function ProductForm({
             <NativeSelect
               id="categoryId"
               className="h-11"
-              {...register("categoryId", { required: "Select a category.", onChange: (e) => onCategoryChange(e.target.value) })}
+              {...register("categoryId", { required: "Select a category." })}
               aria-invalid={Boolean(errors.categoryId)}
             >
               {categories.map((c) => (
@@ -236,6 +228,16 @@ export function ProductForm({
                   {...register("tyreSize", { onBlur: onSizeBlur })}
                   aria-invalid={Boolean(errors.tyreSize)}
                 />
+              </Field>
+              <Field label="Vehicle" htmlFor="vehicleType" error={errors.vehicleType}>
+                <NativeSelect id="vehicleType" className="h-11" {...register("vehicleType")}>
+                  <option value="">Not set</option>
+                  {VEHICLE_TYPES.map((v) => (
+                    <option key={v.value} value={v.value}>
+                      {v.label}
+                    </option>
+                  ))}
+                </NativeSelect>
               </Field>
               <Field label="Brand" htmlFor="brand" error={errors.brand}>
                 <Input id="brand" className="h-11 text-base" placeholder="e.g. JK Tyre" {...register("brand")} />
@@ -298,16 +300,6 @@ export function ProductForm({
           <h2 className="font-heading text-lg">Tyre details</h2>
           <p className="mt-1 text-sm text-muted-foreground">Optional. They help filter the stock list and match the company price list.</p>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label="Vehicle" htmlFor="vehicleType" error={errors.vehicleType}>
-              <NativeSelect id="vehicleType" className="h-11" {...register("vehicleType")}>
-                <option value="">Not set</option>
-                {VEHICLE_TYPES.map((v) => (
-                  <option key={v.value} value={v.value}>
-                    {v.label}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
             <Field label="Radial or bias" htmlFor="construction" error={errors.construction} hint="Read from the size when it says R or -.">
               <NativeSelect id="construction" className="h-11" {...register("construction")}>
                 <option value="">Not set</option>
