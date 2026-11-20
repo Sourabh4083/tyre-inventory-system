@@ -5,6 +5,7 @@ import { ArrowDownToLine, ChevronRight, PackageMinus } from "lucide-react";
 import type { ProductDTO } from "@/lib/services/products";
 import { formatMoney, formatRelative } from "@/lib/format";
 import { UNIT_LABEL } from "@/lib/constants";
+import { tyreSpecLine } from "@/lib/tyre";
 import { Button } from "@/components/ui/button";
 import { StockBadge } from "@/components/app/stock-badge";
 import type { StockDialogKind } from "@/components/app/stock-dialogs";
@@ -27,6 +28,7 @@ export function ProductCard({
       <div className="flex items-start justify-between gap-3">
         <Link href={`/inventory/${product.id}`} className="min-w-0 flex-1">
           <h3 className="line-clamp-2 text-base leading-snug font-semibold text-foreground">{product.name}</h3>
+          {tyreSpecLine(product) ? <p className="mt-0.5 truncate text-xs font-medium text-foreground/80">{tyreSpecLine(product)}</p> : null}
           <p className="mt-0.5 truncate text-xs text-muted-foreground">
             {product.categoryName}
             {product.sku ? ` · SKU ${product.sku}` : ""}

@@ -64,6 +64,7 @@ export async function renderBillPdf(bill: BillDTO, settings: BusinessSettingsDat
   lines.push({ kind: "pair", left: "Date", right: formatDateTime(bill.createdAt), size: 9 });
   if (bill.customerName) lines.push({ kind: "pair", left: "Customer", right: bill.customerName, size: 9 });
   if (bill.customerPhone) lines.push({ kind: "pair", left: bill.customerName ? "" : "Customer", right: bill.customerPhone, size: 9 });
+  if (bill.vehicleNumber) lines.push({ kind: "pair", left: "Vehicle", right: bill.vehicleNumber, size: 9 });
   lines.push({ kind: "rule" });
   for (const i of bill.items) {
     const label = `${i.name}${i.kind === "SERVICE" ? " (service)" : ""}`;

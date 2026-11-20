@@ -5,7 +5,9 @@ import { Suspense } from "react";
 import { Archive, PackagePlus } from "lucide-react";
 import { requireUserPage } from "@/lib/auth/guards";
 import { getSettings } from "@/lib/services/settings";
-import { listCategories, listProducts, productsForViewer, type ProductSort } from "@/lib/services/products";
+import { listBrands, listCategories, listProducts, listRimSizes, productsForViewer, type ProductSort } from "@/lib/services/products";
+import type { Fitment, TubeType, VehicleType } from "@/generated/prisma/enums";
+import { FITMENTS, TUBE_TYPES, VEHICLE_TYPES } from "@/lib/tyre";
 import type { StockStatus } from "@/lib/stock-status";
 import { PageHeader } from "@/components/app/page-header";
 import { ProductFilters } from "@/components/app/product-filters";
@@ -16,7 +18,7 @@ import { can } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "All Products" };
 
-type Params = { q?: string; category?: string; status?: string; sort?: string; page?: string; size?: string; archived?: string };
+type Params = { q?: string; category?: string; status?: string; sort?: string; page?: string; size?: string; archived?: string; vehicle?: string; brand?: string; rim?: string; tube?: string; fit?: string };
 
 const STATUSES = new Set<StockStatus>(["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"]);
 const SORTS = new Set<ProductSort>(["name", "quantity", "price", "updated"]);
@@ -27,10 +29,16 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   const showArchived = params.archived === "1" && user.role === "OWNER";
   const stockStatus = STATUSES.has(params.status as StockStatus) ? (params.status as StockStatus) : undefined;
   const sort = SORTS.has(params.sort as ProductSort) ? (params.sort as ProductSort) : "name";
+  const vehicleType = VEHICLE_TYPES.some((v) => v.value === params.vehicle) ? (params.vehicle as VehicleType) : undefined;
+  const tubeType = TUBE_TYPES.some((v) => v.value === params.tube) ? (params.tube as TubeType) : undefined;
+  const fitment = FITMENTS.some((v) => v.value === params.fit) ? (params.fit as Fitment) : undefined;
+  const rimInch = params.rim && Number.isFinite(Number(params.rim)) ? Number(params.rim) : undefined;
 
-  const [settings, categories, result] = await Promise.all([
+  const [settings, categories, brands, rimSizes, result] = await Promise.all([
     getSettings(),
     listCategories(),
+    listBrands(),
+    listRimSizes(),
     listProducts({
       search: params.q,
       categoryId: params.category || undefined,
@@ -38,6 +46,11 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       sort,
       ...parsePaging(params),
       archivedOnly: showArchived,
+      vehicleType,
+      brand: params.brand || undefined,
+      rimInch,
+      tubeType,
+      fitment,
     }),
   ]);
 
@@ -65,7 +78,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
         }
       />
       <Suspense>
-        <ProductFilters categories={categories} showFilters={!showArchived} />
+        <ProductFilters categories={categories} showFilters={!showArchived} tyreFilters={showArchived ? undefined : { brands, rimSizes }} />
       </Suspense>
       <ProductList
         products={productsForViewer(result.items, user.role)}

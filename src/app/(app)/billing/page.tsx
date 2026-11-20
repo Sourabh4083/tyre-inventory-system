@@ -157,6 +157,7 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
                     <td className="px-4 py-3">
                       {b.customerName ?? <span className="text-muted-foreground">Walk-in</span>}
                       {b.customerPhone ? <span className="block text-xs text-muted-foreground">{b.customerPhone}</span> : null}
+                      {b.vehicleNumber ? <span className="block font-mono text-xs text-muted-foreground">{b.vehicleNumber}</span> : null}
                     </td>
                     <td className="max-w-xs px-4 py-3">
                       <span className="block truncate text-muted-foreground">{b.items.map((i) => (i.quantity > 1 ? `${i.quantity}× ${i.name}` : i.name)).join(", ")}</span>

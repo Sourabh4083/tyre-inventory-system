@@ -13,7 +13,7 @@ export default async function NewProductPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader title="Add Product" description="Create a new item. It appears in inventory immediately after saving." />
-      <ProductForm categories={categories} currencySymbol={settings.currencySymbol} isOwner={user.role === "OWNER"} globalThreshold={settings.lowStockThreshold} />
+      <ProductForm categories={categories} currencySymbol={settings.currencySymbol} isOwner={user.role === "OWNER"} globalThreshold={settings.lowStockThreshold} defaultBrand={settings.defaultTyreBrand} />
     </div>
   );
 }

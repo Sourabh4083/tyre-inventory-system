@@ -140,6 +140,7 @@ describe("bill PDF", () => {
     shopAddress: "Shop 4, Ring Road\nRaipur, Chhattisgarh",
     shopPhone: "98765 00000",
     onlineShopUrl: null,
+    defaultTyreBrand: "JK Tyre",
   };
 
   it("renders a PDF with the rupee sign", async () => {

@@ -1,7 +1,19 @@
 import { z } from "zod";
 import { zonedDate } from "@/lib/timezone";
+import { tidyVehicleNumber } from "@/lib/tyre";
 
 const UNIT_VALUES = ["PIECE", "PACK", "BOX", "BOTTLE", "ROLL", "SET", "PAIR", "METER"] as const;
+const VEHICLE_TYPE_VALUES = ["CAR_JEEP", "TWO_WHEELER", "THREE_WHEELER", "LCV_SCV", "TRUCK_BUS", "TRACTOR", "OTHER"] as const;
+const CONSTRUCTION_VALUES = ["RADIAL", "BIAS"] as const;
+const TUBE_TYPE_VALUES = ["TL", "TT", "TTF"] as const;
+const FITMENT_VALUES = ["FRONT", "REAR", "ALL"] as const;
+
+/** A choice from a select: "" (not chosen) -> null. */
+const optionalEnum = <T extends readonly [string, ...string[]]>(values: T) =>
+  z
+    .union([z.literal(""), z.enum(values)])
+    .optional()
+    .transform((v): T[number] | null => (v ? v : null));
 
 const trimmed = (max: number) => z.string().trim().max(max);
 
@@ -66,6 +78,23 @@ export const productCreateSchema = z.object({
     .union([z.literal(""), z.coerce.number().int().min(0).max(100000)])
     .optional()
     .transform((v) => (v === "" || v === undefined ? null : v)),
+  // Tyre details: all optional here; a tyre category's size requirement is checked in the service.
+  tyreSize: optionalText(40),
+  brand: optionalText(60),
+  pattern: optionalText(80),
+  vehicleType: optionalEnum(VEHICLE_TYPE_VALUES),
+  construction: optionalEnum(CONSTRUCTION_VALUES),
+  tubeType: optionalEnum(TUBE_TYPE_VALUES),
+  fitment: optionalEnum(FITMENT_VALUES),
+  plyRating: z
+    .union([z.literal(""), z.coerce.number({ message: "Enter a whole number." }).int("Enter a whole number.").min(1, "Too small.").max(40, "Ply rating looks too high.")])
+    .optional()
+    .transform((v) => (v === "" || v === undefined ? null : v)),
+  nsdMm: z
+    .union([z.literal(""), z.coerce.number({ message: "Enter a number in mm." }).min(0, "Cannot be negative.").max(99, "Tread depth looks too high.")])
+    .optional()
+    .transform((v) => (v === "" || v === undefined ? null : String(Math.round(v * 10) / 10))),
+  materialCode: optionalText(40).transform((v) => (v ? v.toUpperCase() : v)),
 });
 export type ProductCreateInput = z.input<typeof productCreateSchema>;
 
@@ -122,6 +151,7 @@ export const settingsSchema = z.object({
   lowStockThreshold: z.coerce.number().int().min(0).max(100000),
   shopAddress: trimmed(300).default(""),
   shopPhone: trimmed(30).default(""),
+  defaultTyreBrand: trimmed(60).default(""),
   onlineShopUrl: z
     .string()
     .trim()
@@ -196,10 +226,14 @@ const employeeIdsInput = z
   .max(50)
   .transform((ids) => [...new Set(ids)]);
 
+/** "cg04ab1234" -> "CG 04 AB 1234"-style capitals; blank -> null. */
+const vehicleNumberInput = z.string().trim().max(20, "Vehicle number is too long.").optional().transform((v) => tidyVehicleNumber(v));
+
 const billBase = z.object({
   items: z.array(billItemSchema).min(1, "Add at least one item to the bill."),
   customerName: optionalText(120),
   customerPhone: optionalPhone,
+  vehicleNumber: vehicleNumberInput,
   discount: moneyInput.transform((v) => v ?? "0"),
   /** Method of the money taken at the counter (the whole bill, or "paidNow" on a pay-later bill). */
   paymentMethod: z.enum(PAYMENT_METHODS).default("CASH"),
@@ -269,6 +303,7 @@ export const openBillSchema = z.object({
   employeeIds: employeeIdsInput.refine((ids) => ids.length > 0, "Choose the employee handling this customer."),
   customerName: optionalText(120),
   customerPhone: optionalPhone,
+  vehicleNumber: vehicleNumberInput,
   discount: optionalText(20),
   notes: optionalText(500),
   items: z.array(openBillItemSchema).min(1, "Add at least one product or service."),

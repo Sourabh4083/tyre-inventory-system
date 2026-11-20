@@ -15,6 +15,7 @@ import {
 } from "@/lib/validation/schemas";
 import {
   createCategory,
+  setCategoryIsTyre,
   createProduct,
   deleteProduct,
   findProductByCode,
@@ -133,12 +134,25 @@ export async function quickSearchProductsAction(query: string): Promise<ActionRe
   }
 }
 
-export async function createCategoryAction(input: { name: string }): Promise<ActionResult<{ id: string; name: string }>> {
+export async function setCategoryIsTyreAction(input: { id: string; isTyre: boolean }): Promise<ActionResult<{ id: string; isTyre: boolean }>> {
+  try {
+    const user = await requirePermission("category.manage");
+    if (typeof input?.id !== "string" || typeof input.isTyre !== "boolean") return { ok: false, error: "Something went wrong. Please try again." };
+    const category = await setCategoryIsTyre(input.id, input.isTyre, user);
+    revalidatePath("/settings");
+    revalidatePath("/inventory", "layout");
+    return { ok: true, data: { id: category.id, isTyre: category.isTyre } };
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+export async function createCategoryAction(input: { name: string; isTyre?: boolean }): Promise<ActionResult<{ id: string; name: string }>> {
   try {
     const user = await requirePermission("category.manage");
     const parsed = categorySchema.safeParse(input);
     if (!parsed.success) return { ok: false, error: "Please fix the highlighted fields.", fieldErrors: fieldErrors(parsed.error) };
-    const category = await createCategory(parsed.data.name, user);
+    const category = await createCategory(parsed.data.name, user, input.isTyre !== false);
     revalidatePath("/settings");
     revalidatePath("/inventory");
     return { ok: true, data: { id: category.id, name: category.name } };

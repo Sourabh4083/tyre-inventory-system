@@ -113,4 +113,17 @@ export const MANAGER_EDITABLE_PRODUCT_FIELDS: ReadonlySet<string> = new Set([
   "unit",
   "location",
   "notes",
+  // Tyre details are basic information too.
+  "tyreSize",
+  "sizeKey",
+  "rimInch",
+  "brand",
+  "pattern",
+  "vehicleType",
+  "construction",
+  "tubeType",
+  "fitment",
+  "plyRating",
+  "nsdMm",
+  "materialCode",
 ]);

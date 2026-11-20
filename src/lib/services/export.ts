@@ -1,4 +1,5 @@
 import "server-only";
+import { CONSTRUCTION_LABEL, FITMENT_LABEL, VEHICLE_TYPE_LABEL } from "@/lib/tyre";
 import * as XLSX from "xlsx";
 import { prisma } from "@/lib/db";
 import type { BillStatus, MovementType } from "@/generated/prisma/enums";
@@ -80,6 +81,17 @@ async function productsSheets(p: Params): Promise<Sheet[]> {
         "Product no.": x.productNumber,
         Name: x.name,
         Category: x.categoryName,
+        "Tyre size": x.tyreSize,
+        Brand: x.brand,
+        Pattern: x.pattern,
+        Vehicle: x.vehicleType ? VEHICLE_TYPE_LABEL[x.vehicleType] : null,
+        "Tubeless / tube": x.tubeType,
+        "Radial / bias": x.construction ? CONSTRUCTION_LABEL[x.construction] : null,
+        Fitment: x.fitment ? FITMENT_LABEL[x.fitment] : null,
+        Rim: num(x.rimInch),
+        "Ply rating": x.plyRating,
+        "NSD (mm)": num(x.nsdMm),
+        "Material code": x.materialCode,
         SKU: x.sku,
         Barcode: x.barcode,
         Quantity: x.quantity,
@@ -110,6 +122,7 @@ async function billsSheets(p: Params): Promise<Sheet[]> {
         Status: b.status === "COMPLETED" ? "Completed" : "Cancelled",
         Customer: b.customerName,
         Phone: b.customerPhone,
+        Vehicle: b.vehicleNumber,
         Items: b.itemCount,
         Subtotal: Number(b.subtotal),
         Discount: Number(b.discount),

@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StockBadge } from "@/components/app/stock-badge";
+import { tyreSpecLine } from "@/lib/tyre";
 import type { StockDialogKind } from "@/components/app/stock-dialogs";
 
 export function ProductTable({
@@ -52,7 +53,7 @@ export function ProductTable({
                 <TableCell className="pl-4">
                   <Link href={`/inventory/${p.id}`} className="block max-w-[280px]">
                     <span className="block truncate font-medium text-foreground hover:text-primary">{p.name}</span>
-                    <span className="block text-xs text-muted-foreground">{p.productNumber}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{[p.productNumber, tyreSpecLine(p)].filter(Boolean).join(" · ")}</span>
                   </Link>
                 </TableCell>
                 <TableCell className="font-mono text-xs text-muted-foreground">{p.sku ?? "—"}</TableCell>

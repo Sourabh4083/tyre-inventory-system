@@ -109,6 +109,7 @@ export async function updateSettingsAction(input: {
   shopAddress: string;
   shopPhone: string;
   onlineShopUrl: string;
+  defaultTyreBrand: string;
 }): Promise<ActionResult<BusinessSettingsData>> {
   try {
     const user = await requirePermission("settings.manage");

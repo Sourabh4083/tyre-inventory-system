@@ -15,6 +15,7 @@ import type { BillCreateData, BillPaymentData, BillUpdateData } from "@/lib/vali
 import { randomBytes } from "node:crypto";
 import { PAGE_SIZE, SHARE_LINK_DAYS } from "@/lib/constants";
 import { maskPhone, phoneKey } from "@/lib/phone";
+import { vehicleKey } from "@/lib/tyre";
 
 /* ---------- DTOs ---------- */
 
@@ -35,6 +36,7 @@ export type BillDTO = {
   status: BillStatus;
   customerName: string | null;
   customerPhone: string | null;
+  vehicleNumber: string | null;
   subtotal: string;
   discount: string;
   total: string;
@@ -91,6 +93,7 @@ function toBillDTO(b: BillRow): BillDTO {
     status: b.status,
     customerName: b.customerName,
     customerPhone: b.customerPhone,
+    vehicleNumber: b.vehicleNumber,
     subtotal: b.subtotal.toFixed(2),
     discount: b.discount.toFixed(2),
     total: b.total.toFixed(2),
@@ -282,6 +285,8 @@ export async function createBill(data: BillCreateData, actor: SessionUser): Prom
           customerName: data.customerName,
           customerPhone: data.customerPhone,
           customerPhoneKey: phoneKey(data.customerPhone),
+          vehicleNumber: data.vehicleNumber,
+          vehicleKey: vehicleKey(data.vehicleNumber),
           subtotal: fromPaise(subtotal),
           discount: fromPaise(discount),
           total: fromPaise(total),
@@ -451,6 +456,9 @@ export async function listBills(params: ListBillsParams = {}) {
     // A phone typed in any format ("98765 43210", "+91...") finds the customer's bills.
     const digits = search.replace(/\D/g, "");
     if (/^[0-9+\-\s()]+$/.test(search) && digits.length >= 3) where.OR = [...where.OR, { customerPhoneKey: { contains: digits.slice(-10) } }];
+    // A vehicle number typed with or without spaces ("CG04AB1234", "cg 04 ab").
+    const vKey = vehicleKey(search);
+    if (vKey && vKey.length >= 3 && /[A-Z]/.test(vKey)) where.OR = [...where.OR, { vehicleKey: { contains: vKey } }];
   }
   const [rows, total] = await Promise.all([
     prisma.bill.findMany({ where, orderBy: { createdAt: params.unpaid ? "asc" : "desc" }, include: billInclude, skip: (page - 1) * pageSize, take: pageSize }),
@@ -726,6 +734,8 @@ export async function updateBill(data: BillUpdateData, actor: SessionUser): Prom
         customerName: data.customerName,
         customerPhone: data.customerPhone,
         customerPhoneKey: phoneKey(data.customerPhone),
+        vehicleNumber: data.vehicleNumber,
+        vehicleKey: vehicleKey(data.vehicleNumber),
         subtotal: fromPaise(subtotal),
         discount: fromPaise(discount),
         total: fromPaise(total),

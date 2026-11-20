@@ -29,6 +29,7 @@ export default async function NewOrderPage() {
         currencySymbol={settings.currencySymbol}
         categories={categories}
         globalThreshold={settings.lowStockThreshold}
+        defaultBrand={settings.defaultTyreBrand}
         isOwner={user.role === "OWNER"}
         showCost={can(user.role, "product.cost.view")}
       />

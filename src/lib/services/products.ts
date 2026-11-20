@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
-import type { MovementType, ProductStatus, Role, Unit } from "@/generated/prisma/enums";
+import type { Fitment, MovementType, ProductStatus, Role, TubeType, TyreConstruction, Unit, VehicleType } from "@/generated/prisma/enums";
 import { AppError } from "@/lib/errors";
 import { getSettings } from "@/lib/services/settings";
 import { recordAudit } from "@/lib/services/audit";
@@ -12,6 +12,7 @@ import type { SessionUser } from "@/lib/auth/session";
 import type { z } from "zod";
 import type { productCreateSchema, productPricesSchema, productUpdateSchema } from "@/lib/validation/schemas";
 import { fromPaise, toPaise } from "@/lib/money";
+import { parseTyreSize, sizeSearchKey } from "@/lib/tyre";
 
 /* ---------- DTOs (serialisable for client components) ---------- */
 
@@ -38,6 +39,19 @@ export type ProductDTO = {
   updatedAt: string;
   createdByName: string | null;
   updatedByName: string | null;
+  /** Its category holds tyres, so it needs a tyre size. */
+  categoryIsTyre: boolean;
+  tyreSize: string | null;
+  brand: string | null;
+  pattern: string | null;
+  rimInch: string | null;
+  vehicleType: VehicleType | null;
+  construction: TyreConstruction | null;
+  tubeType: TubeType | null;
+  fitment: Fitment | null;
+  plyRating: number | null;
+  nsdMm: string | null;
+  materialCode: string | null;
 };
 
 export type MovementDTO = {
@@ -63,7 +77,7 @@ export type MovementDTO = {
 };
 
 export const productInclude = {
-  category: { select: { name: true } },
+  category: { select: { name: true, isTyre: true } },
   createdBy: { select: { name: true } },
   updatedBy: { select: { name: true } },
 } satisfies Prisma.ProductInclude;
@@ -95,6 +109,18 @@ export function toProductDTO(p: ProductRow, globalThreshold: number): ProductDTO
     updatedAt: p.updatedAt.toISOString(),
     createdByName: p.createdBy?.name ?? null,
     updatedByName: p.updatedBy?.name ?? null,
+    categoryIsTyre: p.category.isTyre,
+    tyreSize: p.tyreSize,
+    brand: p.brand,
+    pattern: p.pattern,
+    rimInch: p.rimInch ? p.rimInch.toString() : null,
+    vehicleType: p.vehicleType,
+    construction: p.construction,
+    tubeType: p.tubeType,
+    fitment: p.fitment,
+    plyRating: p.plyRating,
+    nsdMm: p.nsdMm ? p.nsdMm.toString() : null,
+    materialCode: p.materialCode,
   };
 }
 
@@ -161,6 +187,7 @@ function uniqueError(err: Prisma.PrismaClientKnownRequestError): AppError {
   const t = JSON.stringify(err.meta ?? {}) + (err.message ?? "");
   if (t.includes("barcode")) return new AppError("This barcode is already used by another product.", "CONFLICT");
   if (t.includes("sku")) return new AppError("This SKU is already used by another product.", "CONFLICT");
+  if (t.includes("materialCode")) return new AppError("This material code is already used by another product.", "CONFLICT", "materialCode");
   return new AppError("A product with these details already exists.", "CONFLICT");
 }
 
@@ -204,6 +231,11 @@ export type ListProductsParams = {
   pageSize?: number;
   includeArchived?: boolean;
   archivedOnly?: boolean;
+  vehicleType?: VehicleType;
+  brand?: string;
+  rimInch?: number;
+  tubeType?: TubeType;
+  fitment?: Fitment;
 };
 
 export async function listProducts(params: ListProductsParams = {}) {
@@ -217,12 +249,21 @@ export async function listProducts(params: ListProductsParams = {}) {
   else if (!params.includeArchived) where.status = "ACTIVE";
   if (params.categoryId) where.categoryId = params.categoryId;
   if (params.stockStatus) where.AND = [stockStatusWhere(params.stockStatus, settings.lowStockThreshold)];
+  if (params.vehicleType) where.vehicleType = params.vehicleType;
+  if (params.brand) where.brand = { equals: params.brand, mode: "insensitive" };
+  if (params.rimInch != null) where.rimInch = params.rimInch;
+  if (params.tubeType) where.tubeType = params.tubeType;
+  if (params.fitment) where.fitment = params.fitment;
   if (search) {
+    // "185/65 r15", "1856515" and "185 65 15" all find the same tyres.
+    const sizeKey = sizeSearchKey(search);
     where.OR = [
       { name: { contains: search, mode: "insensitive" } },
       { sku: { contains: search, mode: "insensitive" } },
       { barcode: { contains: search } },
       { productNumber: { contains: search, mode: "insensitive" } },
+      { materialCode: { contains: search, mode: "insensitive" } },
+      ...(sizeKey ? [{ sizeKey: { startsWith: sizeKey } }] : []),
     ];
   }
 
@@ -280,13 +321,80 @@ export async function findProductByCode(code: string): Promise<ProductDTO | null
 }
 
 export async function listCategories() {
-  return prisma.category.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { id: true, name: true } });
+  return prisma.category.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { id: true, name: true, isTyre: true } });
+}
+
+/** Brands in use, for the product filter. */
+export async function listBrands(): Promise<string[]> {
+  const rows = await prisma.product.findMany({ where: { status: "ACTIVE", brand: { not: null } }, distinct: ["brand"], select: { brand: true }, orderBy: { brand: "asc" } });
+  return rows.map((r) => r.brand!).filter(Boolean);
+}
+
+/** Rim sizes in use, for the product filter. */
+export async function listRimSizes(): Promise<number[]> {
+  const rows = await prisma.product.findMany({ where: { status: "ACTIVE", rimInch: { not: null } }, distinct: ["rimInch"], select: { rimInch: true }, orderBy: { rimInch: "asc" } });
+  return rows.map((r) => Number(r.rimInch));
+}
+
+export type SizeGroup = { size: string; sizeKey: string; totalQuantity: number; products: ProductDTO[] };
+
+/**
+ * The "Find by size" counter screen: every active tyre whose size starts with what was typed,
+ * grouped by size, in stock first and cheapest first inside each size.
+ */
+export async function findTyresBySize(query: string): Promise<SizeGroup[]> {
+  const key = sizeSearchKey(query) ?? parseTyreSize(query)?.key ?? null;
+  if (!key || key.length < 2) return [];
+  const settings = await getSettings();
+  const rows = await prisma.product.findMany({
+    where: { status: "ACTIVE", sizeKey: { startsWith: key } },
+    include: productInclude,
+    orderBy: [{ sizeKey: "asc" }, { name: "asc" }],
+    take: 200,
+  });
+  const groups = new Map<string, SizeGroup>();
+  for (const row of rows) {
+    const dto = toProductDTO(row, settings.lowStockThreshold);
+    const k = row.sizeKey!;
+    const g = groups.get(k) ?? { size: row.tyreSize ?? k, sizeKey: k, totalQuantity: 0, products: [] };
+    g.products.push(dto);
+    g.totalQuantity += Math.max(0, dto.quantity);
+    groups.set(k, g);
+  }
+  const price = (p: ProductDTO) => (p.sellingPrice == null ? Number.POSITIVE_INFINITY : Number(p.sellingPrice));
+  for (const g of groups.values()) g.products.sort((a, b) => Number(b.quantity > 0) - Number(a.quantity > 0) || price(a) - price(b) || a.name.localeCompare(b.name));
+  // An exact size first, then the rest in size order.
+  return [...groups.values()].sort((a, b) => Number(b.sizeKey === key) - Number(a.sizeKey === key) || a.sizeKey.localeCompare(b.sizeKey));
 }
 
 /* ---------- Mutations ---------- */
 
 type CreateInput = z.output<typeof productCreateSchema>;
 type UpdateInput = z.output<typeof productUpdateSchema>;
+
+/**
+ * The tyre columns to save: the size is tidied and keyed for search, and rim size,
+ * radial/bias and ply rating are read from it when they were not picked.
+ * A tyre category needs a size; tubes, flaps and other items don't.
+ */
+function tyreData(input: Pick<CreateInput, "tyreSize" | "brand" | "pattern" | "vehicleType" | "construction" | "tubeType" | "fitment" | "plyRating" | "nsdMm" | "materialCode">, category: { isTyre: boolean }) {
+  const parsed = parseTyreSize(input.tyreSize);
+  if (category.isTyre && !parsed) throw new AppError("Enter the tyre size, e.g. 185/65 R15.", "VALIDATION", "tyreSize");
+  return {
+    tyreSize: parsed?.size ?? null,
+    sizeKey: parsed?.key || null,
+    rimInch: parsed?.rimInch ?? null,
+    construction: input.construction ?? parsed?.construction ?? null,
+    plyRating: input.plyRating ?? parsed?.plyRating ?? null,
+    brand: input.brand,
+    pattern: input.pattern,
+    vehicleType: input.vehicleType,
+    tubeType: input.tubeType,
+    fitment: input.fitment,
+    nsdMm: input.nsdMm,
+    materialCode: input.materialCode,
+  };
+}
 
 export async function createProduct(input: CreateInput, actor: SessionUser): Promise<ProductDTO> {
   const settings = await getSettings();
@@ -296,6 +404,7 @@ export async function createProduct(input: CreateInput, actor: SessionUser): Pro
     const created = await prisma.$transaction(async (tx) => {
       const category = await tx.category.findUnique({ where: { id: input.categoryId } });
       if (!category) throw new AppError("Selected category does not exist.");
+      const tyre = tyreData(input, category);
       const productNumber = await nextProductNumber(tx);
       const product = await tx.product.create({
         data: {
@@ -312,6 +421,7 @@ export async function createProduct(input: CreateInput, actor: SessionUser): Pro
           unit: input.unit,
           location: input.location,
           notes: input.notes,
+          ...tyre,
           createdById: actor.id,
           updatedById: actor.id,
         },
@@ -356,6 +466,9 @@ export async function updateProduct(id: string, input: UpdateInput, actor: Sessi
       if (existing.status === "ARCHIVED" && actor.role !== "OWNER") {
         throw new AppError("Archived products can only be edited by the owner.", "FORBIDDEN");
       }
+      const category = await tx.category.findUnique({ where: { id: input.categoryId } });
+      if (!category) throw new AppError("Selected category does not exist.");
+      const tyre = tyreData(input, category);
 
       const data: Prisma.ProductUncheckedUpdateInput = {
         name: input.name,
@@ -369,6 +482,7 @@ export async function updateProduct(id: string, input: UpdateInput, actor: Sessi
         location: input.location,
         notes: input.notes,
         lowStockThreshold: input.lowStockThreshold,
+        ...tyre,
         updatedById: actor.id,
       };
 
@@ -531,16 +645,31 @@ export async function deleteProduct(id: string, actor: SessionUser) {
   });
 }
 
-export async function createCategory(name: string, actor: SessionUser) {
+export async function createCategory(name: string, actor: SessionUser, isTyre = true) {
   const existing = await prisma.category.findFirst({ where: { name: { equals: name, mode: "insensitive" } } });
   if (existing) throw new AppError("A category with this name already exists.", "CONFLICT");
   const max = await prisma.category.aggregate({ _max: { sortOrder: true } });
-  const category = await prisma.category.create({ data: { name, sortOrder: (max._max.sortOrder ?? 0) + 1 } });
+  const category = await prisma.category.create({ data: { name, isTyre, sortOrder: (max._max.sortOrder ?? 0) + 1 } });
   await recordAudit(prisma, {
     action: "CATEGORY_CREATED",
     entityType: "Category",
     entityId: category.id,
-    summary: `Created category "${category.name}"`,
+    summary: `Created ${isTyre ? "tyre " : ""}category "${category.name}"`,
+    actorId: actor.id,
+  });
+  return category;
+}
+
+/** Tyre categories need a tyre size on new and edited products; existing products are left as they are. */
+export async function setCategoryIsTyre(id: string, isTyre: boolean, actor: SessionUser) {
+  const existing = await prisma.category.findUnique({ where: { id } });
+  if (!existing) throw new AppError("Category not found.", "NOT_FOUND");
+  const category = await prisma.category.update({ where: { id }, data: { isTyre } });
+  await recordAudit(prisma, {
+    action: "CATEGORY_UPDATED",
+    entityType: "Category",
+    entityId: id,
+    summary: `"${category.name}" is ${isTyre ? "now a tyre category" : "no longer a tyre category"}`,
     actorId: actor.id,
   });
   return category;

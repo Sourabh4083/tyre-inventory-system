@@ -80,6 +80,35 @@ enum AttendanceStatus {
   ABSENT
 }
 
+/// What a tyre fits. Tubes, flaps and other items leave it empty.
+enum VehicleType {
+  CAR_JEEP
+  TWO_WHEELER
+  THREE_WHEELER
+  LCV_SCV
+  TRUCK_BUS
+  TRACTOR
+  OTHER
+}
+
+enum TyreConstruction {
+  RADIAL
+  BIAS
+}
+
+/// TL = tubeless, TT = tube-type, TTF = sold with tube and flap.
+enum TubeType {
+  TL
+  TT
+  TTF
+}
+
+enum Fitment {
+  FRONT
+  REAR
+  ALL
+}
+
 enum Unit {
   PIECE
   PACK
@@ -133,31 +162,51 @@ model Category {
   id        String    @id @default(cuid())
   name      String    @unique
   sortOrder Int       @default(0)
+  /// Tyre categories need a tyre size on every product; tubes, flaps and other items don't.
+  isTyre    Boolean   @default(true)
   createdAt DateTime  @default(now()) @db.Timestamptz(3)
   products  Product[]
 }
 
 model Product {
-  id                String        @id @default(cuid())
-  productNumber     String        @unique // PRD-000001
+  id                String   @id @default(cuid())
+  productNumber     String   @unique // PRD-000001
   name              String
-  sku               String?       @unique
-  barcode           String?       @unique
+  sku               String?  @unique
+  barcode           String?  @unique
   categoryId        String
   description       String?
-  costPrice         Decimal?      @db.Decimal(12, 2)
-  sellingPrice      Decimal?      @db.Decimal(12, 2)
-  quantity          Int           @default(0)
+  costPrice         Decimal? @db.Decimal(12, 2)
+  sellingPrice      Decimal? @db.Decimal(12, 2)
+  quantity          Int      @default(0)
   // Per-product override; null means "use the shop-wide threshold from settings".
   lowStockThreshold Int?
-  unit              Unit          @default(PIECE)
+  unit              Unit     @default(PIECE)
   location          String?
   notes             String?
-  status            ProductStatus @default(ACTIVE)
-  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime      @updatedAt @db.Timestamptz(3)
-  createdById       String?
-  updatedById       String?
+
+  // ---- Tyre details (empty for tubes, flaps and other items) ----
+  brand        String?
+  pattern      String?
+  /// As written on the tyre, e.g. "185/65 R15", "10.00-20", "100/90-17".
+  tyreSize     String?
+  /// Digits of tyreSize only ("1856515"), so any way of typing the size finds it.
+  sizeKey      String?
+  rimInch      Decimal?          @db.Decimal(4, 1)
+  vehicleType  VehicleType?
+  construction TyreConstruction?
+  tubeType     TubeType?
+  fitment      Fitment?
+  plyRating    Int?
+  /// Tread depth in mm (NSD).
+  nsdMm        Decimal?          @db.Decimal(4, 1)
+  /// The company's product code, used to match price lists.
+  materialCode String?           @unique
+  status       ProductStatus     @default(ACTIVE)
+  createdAt    DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime          @updatedAt @db.Timestamptz(3)
+  createdById  String?
+  updatedById  String?
 
   category   Category            @relation(fields: [categoryId], references: [id])
   createdBy  User?               @relation("ProductCreatedBy", fields: [createdById], references: [id])
@@ -170,6 +219,9 @@ model Product {
   @@index([status, quantity])
   @@index([status, categoryId])
   @@index([updatedAt])
+  @@index([sizeKey])
+  @@index([brand])
+  @@index([vehicleType, rimInch])
 }
 
 model StockMovement {
@@ -221,6 +273,10 @@ model Bill {
   customerPhone    String?
   /// Last 10 digits of customerPhone, so the same customer matches however the number was typed.
   customerPhoneKey String?
+  /// As typed, e.g. "CG 04 AB 1234".
+  vehicleNumber    String?
+  /// vehicleNumber in capitals without spaces or dashes ("CG04AB1234"), for search.
+  vehicleKey       String?
   subtotal         Decimal        @db.Decimal(12, 2)
   discount         Decimal        @default(0) @db.Decimal(12, 2)
   total            Decimal        @db.Decimal(12, 2)
@@ -260,6 +316,7 @@ model Bill {
   @@index([status, createdAt])
   @@index([customerPhone])
   @@index([customerPhoneKey])
+  @@index([vehicleKey])
   @@index([status, balanceDue])
 }
 
@@ -312,6 +369,7 @@ model OpenBill {
   id            String   @id @default(cuid())
   customerName  String?
   customerPhone String?
+  vehicleNumber String?
   /// As typed in the composer; checked when the bill is completed.
   discount      String?
   notes         String?
@@ -387,6 +445,8 @@ model PurchaseOrderItem {
 model BusinessSettings {
   id                String    @id @default("default")
   businessName      String    @default("Tyre Shop")
+  /// Filled in on new tyres; the dealer's main brand.
+  defaultTyreBrand  String    @default("JK Tyre")
   /// Printed under the shop name on bills; one line per address line.
   shopAddress       String    @default("")
   shopPhone         String    @default("")
@@ -429,7 +489,7 @@ model Employee {
   phone         String?
   email         String?
   address       String?
-  designation   String? // e.g. Stylist, Helper, Receptionist
+  designation   String? // e.g. Fitter, Mechanic, Helper
   joinedAt      DateTime? @db.Timestamptz(3)
   leftAt        DateTime? @db.Timestamptz(3)
   isActive      Boolean   @default(true)

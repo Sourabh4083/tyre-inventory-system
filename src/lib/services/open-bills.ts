@@ -27,6 +27,7 @@ export type OpenBillDTO = {
   employeeNames: string[];
   customerName: string | null;
   customerPhone: string | null;
+  vehicleNumber: string | null;
   discount: string;
   notes: string | null;
   lines: OpenBillLine[];
@@ -49,6 +50,7 @@ function toOpenBillDTO(b: OpenBillRow, lines = b.lines as unknown as OpenBillLin
     employeeNames: b.employees.map((e) => e.name),
     customerName: b.customerName,
     customerPhone: b.customerPhone,
+    vehicleNumber: b.vehicleNumber,
     discount: b.discount ?? "",
     notes: b.notes,
     lines,
@@ -123,6 +125,7 @@ export async function saveOpenBill(data: OpenBillData, actor: SessionUser): Prom
   const fields = {
     customerName: data.customerName,
     customerPhone: data.customerPhone,
+    vehicleNumber: data.vehicleNumber,
     discount: data.discount,
     notes: data.notes,
     lines: data.items as Prisma.InputJsonValue,

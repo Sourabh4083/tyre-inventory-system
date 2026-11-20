@@ -26,6 +26,7 @@ export default async function NewBillPage({ searchParams }: { searchParams: Prom
         employeeIds: openBill.employeeIds,
         customerName: openBill.customerName ?? "",
         customerPhone: openBill.customerPhone ?? "",
+        vehicleNumber: openBill.vehicleNumber ?? "",
         discount: openBill.discount,
         notes: openBill.notes ?? "",
         lines: openBill.lines,

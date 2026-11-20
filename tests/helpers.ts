@@ -49,8 +49,9 @@ export async function createUser(role: Role, overrides: Partial<{ name: string; 
   return { id: user.id, name: user.name, email: user.email, role: user.role };
 }
 
-export async function createCategoryRow(name = "Glue") {
-  return prisma.category.upsert({ where: { name }, update: {}, create: { name } });
+/** A plain (non-tyre) category unless asked: tyre categories need a size on every product. */
+export async function createCategoryRow(name = "Glue", isTyre = false) {
+  return prisma.category.upsert({ where: { name }, update: { isTyre }, create: { name, isTyre } });
 }
 
 export async function seedBasics() {

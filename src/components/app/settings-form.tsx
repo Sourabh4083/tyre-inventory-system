@@ -20,6 +20,7 @@ export function SettingsForm({ settings }: { settings: BusinessSettingsData }) {
     shopAddress: settings.shopAddress,
     shopPhone: settings.shopPhone,
     onlineShopUrl: settings.onlineShopUrl ?? "",
+    defaultTyreBrand: settings.defaultTyreBrand,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -59,6 +60,9 @@ export function SettingsForm({ settings }: { settings: BusinessSettingsData }) {
             <Input id="onlineShopUrl" className="h-11" inputMode="url" maxLength={200} placeholder="https://" value={values.onlineShopUrl} onChange={(e) => setValues({ ...values, onlineShopUrl: e.target.value })} aria-invalid={Boolean(errors.onlineShopUrl)} />
           </Field>
         </div>
+        <Field label="Main tyre brand" htmlFor="defaultTyreBrand" error={errors.defaultTyreBrand} hint="Filled in on new tyres. Leave blank if you sell many brands.">
+          <Input id="defaultTyreBrand" className="h-11" maxLength={60} placeholder="e.g. JK Tyre" value={values.defaultTyreBrand} onChange={(e) => setValues({ ...values, defaultTyreBrand: e.target.value })} aria-invalid={Boolean(errors.defaultTyreBrand)} />
+        </Field>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Currency code" htmlFor="currencyCode" required error={errors.currencyCode} hint="e.g. INR">
             <Input id="currencyCode" className="h-11 uppercase" maxLength={3} value={values.currencyCode} onChange={(e) => setValues({ ...values, currencyCode: e.target.value.toUpperCase() })} aria-invalid={Boolean(errors.currencyCode)} />

@@ -8,6 +8,7 @@ import { lookupProductByCodeAction } from "@/app/actions/products";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/app/native-select";
 import { cn } from "@/lib/utils";
+import { FITMENTS, TUBE_TYPES, VEHICLE_TYPES } from "@/lib/tyre";
 
 type Category = { id: string; name: string };
 
@@ -21,11 +22,14 @@ export function ProductFilters({
   categories,
   showFilters = true,
   autoFocus,
+  tyreFilters,
 }: {
   categories: Category[];
   /** true = all filters, "pricing" = category + sort only, false = search only */
   showFilters?: boolean | "pricing";
   autoFocus?: boolean;
+  /** A second row of tyre filters (vehicle, brand, rim, tubeless, fitment) with the brands and rims in use. */
+  tyreFilters?: { brands: string[]; rimSizes: number[] };
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -97,78 +101,116 @@ export function ProductFilters({
     inputRef.current?.focus();
   };
 
-  return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-      <div className="relative min-w-0 flex-1">
-        <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4.5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          ref={inputRef}
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder="Search product name, SKU or barcode..."
-          aria-label="Search products"
-          autoFocus={autoFocus}
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          enterKeyHint="search"
-          className="h-12 rounded-xl bg-card pr-20 pl-11 text-base shadow-xs"
-        />
-        <div className="absolute inset-y-0 right-2 flex items-center gap-1">
-          {pending || lookingUp ? <LoaderCircle className="size-4 animate-spin text-muted-foreground" /> : null}
-          {query ? (
-            <button type="button" onClick={clear} aria-label="Clear search" className="flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
-              <X className="size-4" />
-            </button>
-          ) : (
-            <span title="Barcode scanners work here: scan and the product opens." className="hidden size-9 items-center justify-center text-muted-foreground sm:flex">
-              <ScanBarcode className="size-4.5" />
-            </span>
-          )}
-        </div>
-      </div>
+  const tyreSelect = (key: string, label: string, options: { value: string; label: string }[], width: string) => (
+    <NativeSelect
+      aria-label={label}
+      value={params.get(key) ?? ""}
+      onChange={(e) => pushParams((p) => (e.target.value ? p.set(key, e.target.value) : p.delete(key)))}
+      className={cn("h-11 rounded-xl bg-card", width)}
+    >
+      <option value="">{label}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </NativeSelect>
+  );
+  const tyreFilterKeys = ["vehicle", "brand", "rim", "tube", "fit"];
+  const anyTyreFilter = tyreFilterKeys.some((k) => params.get(k));
 
-      {showFilters ? (
-        <div className={cn("grid grid-cols-2 gap-2 lg:flex lg:shrink-0")}>
-          <NativeSelect
-            aria-label="Category"
-            value={params.get("category") ?? ""}
-            onChange={(e) => pushParams((p) => (e.target.value ? p.set("category", e.target.value) : p.delete("category")))}
-            className="h-12 rounded-xl bg-card lg:w-44"
-          >
-            <option value="">All categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </NativeSelect>
-          {showFilters !== "pricing" ? (
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="Search size (185/65 R15), name, SKU or barcode..."
+            aria-label="Search products"
+            autoFocus={autoFocus}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            enterKeyHint="search"
+            className="h-12 rounded-xl bg-card pr-20 pl-11 text-base shadow-xs"
+          />
+          <div className="absolute inset-y-0 right-2 flex items-center gap-1">
+            {pending || lookingUp ? <LoaderCircle className="size-4 animate-spin text-muted-foreground" /> : null}
+            {query ? (
+              <button type="button" onClick={clear} aria-label="Clear search" className="flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
+                <X className="size-4" />
+              </button>
+            ) : (
+              <span title="Barcode scanners work here: scan and the product opens." className="hidden size-9 items-center justify-center text-muted-foreground sm:flex">
+                <ScanBarcode className="size-4.5" />
+              </span>
+            )}
+          </div>
+        </div>
+
+        {showFilters ? (
+          <div className={cn("grid grid-cols-2 gap-2 lg:flex lg:shrink-0")}>
             <NativeSelect
-              aria-label="Stock status"
-              value={params.get("status") ?? ""}
-              onChange={(e) => pushParams((p) => (e.target.value ? p.set("status", e.target.value) : p.delete("status")))}
-              className="h-12 rounded-xl bg-card lg:w-40"
+              aria-label="Category"
+              value={params.get("category") ?? ""}
+              onChange={(e) => pushParams((p) => (e.target.value ? p.set("category", e.target.value) : p.delete("category")))}
+              className="h-12 rounded-xl bg-card lg:w-44"
             >
-              <option value="">All stock levels</option>
-              <option value="IN_STOCK">In stock</option>
-              <option value="LOW_STOCK">Low stock</option>
-              <option value="OUT_OF_STOCK">Out of stock</option>
+              <option value="">All categories</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
             </NativeSelect>
+            {showFilters !== "pricing" ? (
+              <NativeSelect
+                aria-label="Stock status"
+                value={params.get("status") ?? ""}
+                onChange={(e) => pushParams((p) => (e.target.value ? p.set("status", e.target.value) : p.delete("status")))}
+                className="h-12 rounded-xl bg-card lg:w-40"
+              >
+                <option value="">All stock levels</option>
+                <option value="IN_STOCK">In stock</option>
+                <option value="LOW_STOCK">Low stock</option>
+                <option value="OUT_OF_STOCK">Out of stock</option>
+              </NativeSelect>
+            ) : null}
+            <NativeSelect
+              aria-label="Sort by"
+              value={params.get("sort") ?? "name"}
+              onChange={(e) => pushParams((p) => (e.target.value === "name" ? p.delete("sort") : p.set("sort", e.target.value)))}
+              className="col-span-2 h-12 rounded-xl bg-card lg:w-48"
+            >
+              <option value="name">Sort: Name A–Z</option>
+              <option value="quantity">Sort: Quantity (low → high)</option>
+              <option value="price">Sort: Price (low → high)</option>
+              <option value="updated">Sort: Recently updated</option>
+            </NativeSelect>
+          </div>
+        ) : null}
+      </div>
+      {tyreFilters ? (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:flex-wrap lg:items-center">
+          {tyreSelect("vehicle", "All vehicles", VEHICLE_TYPES, "lg:w-40")}
+          {tyreFilters.brands.length > 1 ? tyreSelect("brand", "All brands", tyreFilters.brands.map((b) => ({ value: b, label: b })), "lg:w-40") : null}
+          {tyreSelect("rim", "All rim sizes", tyreFilters.rimSizes.map((r) => ({ value: String(r), label: `${r} inch` })), "lg:w-36")}
+          {tyreSelect("tube", "Tubeless & tube", TUBE_TYPES, "lg:w-40")}
+          {tyreSelect("fit", "Any fitment", FITMENTS, "lg:w-36")}
+          {anyTyreFilter ? (
+            <button
+              type="button"
+              onClick={() => pushParams((p) => tyreFilterKeys.forEach((k) => p.delete(k)))}
+              className="h-11 rounded-xl px-3 text-sm font-medium text-primary hover:bg-accent"
+            >
+              Clear tyre filters
+            </button>
           ) : null}
-          <NativeSelect
-            aria-label="Sort by"
-            value={params.get("sort") ?? "name"}
-            onChange={(e) => pushParams((p) => (e.target.value === "name" ? p.delete("sort") : p.set("sort", e.target.value)))}
-            className="col-span-2 h-12 rounded-xl bg-card lg:w-48"
-          >
-            <option value="name">Sort: Name A–Z</option>
-            <option value="quantity">Sort: Quantity (low → high)</option>
-            <option value="price">Sort: Price (low → high)</option>
-            <option value="updated">Sort: Recently updated</option>
-          </NativeSelect>
         </div>
       ) : null}
     </div>

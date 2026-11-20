@@ -12,6 +12,7 @@ import { parsePaging } from "@/lib/paging";
 import { getPendingOrdersForProduct } from "@/lib/services/orders";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { UNIT_LABEL } from "@/lib/constants";
+import { CONSTRUCTION_LABEL, FITMENT_LABEL, TUBE_TYPE_LABEL, VEHICLE_TYPE_LABEL } from "@/lib/tyre";
 import { StockBadge } from "@/components/app/stock-badge";
 import { MovementList } from "@/components/app/movement-list";
 import { ProductDetailActions } from "@/components/app/product-detail-actions";
@@ -46,7 +47,24 @@ export default async function ProductDetailPage({
   const product = productForViewer(found, user.role);
   const margin = showCost ? computeMargin(product.costPrice, product.sellingPrice) : null;
 
+  const tyreFacts: { label: string; value: React.ReactNode }[] = product.tyreSize
+    ? [
+        { label: "Tyre size", value: <span className="font-mono font-semibold">{product.tyreSize}</span> },
+        { label: "Brand", value: product.brand ?? "—" },
+        { label: "Pattern", value: product.pattern ?? "—" },
+        { label: "Vehicle", value: product.vehicleType ? VEHICLE_TYPE_LABEL[product.vehicleType] : "—" },
+        { label: "Tubeless / tube", value: product.tubeType ? TUBE_TYPE_LABEL[product.tubeType] : "—" },
+        { label: "Radial / bias", value: product.construction ? CONSTRUCTION_LABEL[product.construction] : "—" },
+        { label: "Fitment", value: product.fitment ? FITMENT_LABEL[product.fitment] : "—" },
+        { label: "Rim", value: product.rimInch ? `${Number(product.rimInch)} inch` : "—" },
+        { label: "Ply rating", value: product.plyRating ? `${product.plyRating}PR` : "—" },
+        { label: "Tread depth (NSD)", value: product.nsdMm ? `${Number(product.nsdMm)} mm` : "—" },
+        ...(product.materialCode ? [{ label: "Material code", value: <span className="font-mono">{product.materialCode}</span> }] : []),
+      ]
+    : [];
+
   const facts: { label: string; value: React.ReactNode }[] = [
+    ...tyreFacts,
     { label: "Product no.", value: <span className="font-mono">{product.productNumber}</span> },
     { label: "SKU", value: product.sku ? <span className="font-mono">{product.sku}</span> : "—" },
     { label: "Barcode", value: product.barcode ? <span className="font-mono">{product.barcode}</span> : "—" },

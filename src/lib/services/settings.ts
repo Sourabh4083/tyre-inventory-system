@@ -12,6 +12,8 @@ export type BusinessSettingsData = {
   shopPhone: string;
   /** Website or online shop shown on bills and in the WhatsApp message; null when the shop has none. */
   onlineShopUrl: string | null;
+  /** Filled in on new tyres; the dealer's main brand. */
+  defaultTyreBrand: string;
 };
 
 const DEFAULTS: BusinessSettingsData = {
@@ -22,6 +24,7 @@ const DEFAULTS: BusinessSettingsData = {
   shopAddress: "",
   shopPhone: "",
   onlineShopUrl: null,
+  defaultTyreBrand: "JK Tyre",
 };
 
 /**
@@ -44,6 +47,7 @@ export const getSettings = cache(async (): Promise<BusinessSettingsData> => {
     shopAddress: row.shopAddress,
     shopPhone: row.shopPhone,
     onlineShopUrl: row.onlineShopUrl,
+    defaultTyreBrand: row.defaultTyreBrand,
   };
 });
 

@@ -9,6 +9,7 @@ import {
   BarChart3,
   CalendarCheck2,
   Contact,
+  Disc3,
   Receipt,
   ReceiptText,
   LayoutDashboard,
@@ -43,6 +44,7 @@ const ICONS: Record<NavItem["icon"], React.ComponentType<{ className?: string }>
   expenses: Wallet,
   calls: PhoneCall,
   attendance: CalendarCheck2,
+  size: Disc3,
 };
 
 export function SidebarNav({ role, onNavigate, className }: { role: Role; onNavigate?: () => void; className?: string }) {

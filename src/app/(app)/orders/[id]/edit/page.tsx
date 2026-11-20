@@ -41,6 +41,7 @@ export default async function EditOrderPage({ params }: { params: Promise<{ id: 
         currencySymbol={settings.currencySymbol}
         categories={categories}
         globalThreshold={settings.lowStockThreshold}
+        defaultBrand={settings.defaultTyreBrand}
         // Editing an order is owner-only (order.manage above).
         isOwner
         showCost

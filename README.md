@@ -3,8 +3,8 @@
 A web application for running the back office of a tyre dealer: tyre and tube stock, customer billing,
 purchase orders, staff, expenses and sales reports, for two roles (Owner and Manager).
 
-Built from the salon inventory app as a starting point. Tyre-specific features (tyre details and search
-by size, company price lists, GST invoices) are being added; see the [Roadmap](#roadmap).
+Built from the salon inventory app as a starting point. Tyre details, search by size and vehicle numbers
+on bills are in; company price lists and GST invoices are next (see the [Roadmap](#roadmap)).
 
 It is built for daily use at the counter on a phone, tablet or PC. Every stock change is recorded in a
 ledger, money is handled in integer paise, and all permissions are enforced on the server.
@@ -39,6 +39,18 @@ ledger, money is handled in integer paise, and all permissions are enforced on t
 
 ### Inventory
 
+- **Tyre details** on every tyre: size, brand, pattern, vehicle (car & jeep, two-wheeler, three-wheeler,
+  LCV/SCV, truck & bus, tractor), tubeless / tube type / tube + flap, radial or bias, fitment, ply rating,
+  tread depth (NSD) and the company's material code. The size is tidied as it is typed (`185/65r15`
+  becomes `185/65 R15`), and the rim size, radial/bias and ply rating are read from it. A new tyre's
+  name is written from its details, and its brand starts as the shop's main brand from Settings.
+- **Tyre categories**: products in a tyre category need a size; tubes, flaps and other items don't. The
+  owner marks which categories hold tyres in Settings.
+- **Search by size**: `185/65 R15`, `185/65r15`, `185 65 15` and `1856515` all find the same tyres, in the
+  product list, on the bill screen and when ordering. The product list also filters by vehicle, brand,
+  rim size, tubeless/tube type and fitment.
+- **Find by Size** (`/inventory/size`): the counter screen. Type the size the customer asks for and see
+  every brand and pattern in that size, in stock and cheapest first, with stock and price.
 - **Products** with auto-generated numbers (`PRD-000001`), category, unit, unique SKU and barcode, selling
   price, owner-only cost price, location and notes. Products are archived rather than deleted, so history
   is kept.
@@ -60,6 +72,8 @@ ledger, money is handled in integer paise, and all permissions are enforced on t
 
 ### Billing
 
+- **Vehicle number** on bills and open bills (optional): tidied to `CG 04 AB 1234`, printed on the receipt,
+  PDF and WhatsApp message, shown in the bills list and found by search however it is typed.
 - **New Bill**: scan or search products, tap saved shop services (fitting, alignment, balancing, ...) or add a one-off service, set quantity
   and price per line, discount, and payment by Cash, UPI or Card. Completing a bill saves it as
   `BILL-000001` and reduces stock in the same transaction. Prices are copied onto the bill, so later
@@ -466,14 +480,13 @@ To report a security issue, contact the repository owner privately instead of op
 
 ## Roadmap
 
+Done: tyre details, search by size, Find by Size and vehicle numbers on bills.
+
 Planned, in this order:
 
-1. **Tyre details and search by size**: brand, pattern, size, rim, vehicle type, radial/bias, TL/TT/TTF,
-   fitment, ply rating, NSD and material code on each product; find every tyre in a size by typing
-   `1856515` or `185/65 R15`; vehicle number on bills.
-2. **Company price lists**: NDP, purchase price, NLC and MSRP per tyre, price history, warnings when a
+1. **Company price lists**: NDP, purchase price, NLC and MSRP per tyre, price history, warnings when a
    bill price is above MSRP or below cost, and importing the monthly price list from Excel.
-3. **GST invoices**: shop GSTIN, HSN and rate per category and product, CGST/SGST or IGST, B2B invoices
+2. **GST invoices**: shop GSTIN, HSN and rate per category and product, CGST/SGST or IGST, B2B invoices
    with the customer's GSTIN, invoice numbers per financial year, and GST reports for GSTR-1/3B.
 
 Later: customer credit accounts for fleets, supplier accounts and credit notes, tyre serial numbers and

@@ -11,6 +11,8 @@ export class AppError extends Error {
   constructor(
     message: string,
     public readonly code: AppErrorCode = "VALIDATION",
+    /** The form field the message belongs under, when there is one. */
+    public readonly field?: string,
   ) {
     super(message);
     this.name = "AppError";
@@ -32,8 +34,8 @@ export type ActionResult<T = undefined> =
   | { ok: true; data: T }
   | { ok: false; error: string; code?: AppErrorCode; fieldErrors?: Record<string, string> };
 
-export function toActionError(err: unknown): { ok: false; error: string; code?: AppErrorCode } {
-  if (err instanceof AppError) return { ok: false, error: err.message, code: err.code };
+export function toActionError(err: unknown): { ok: false; error: string; code?: AppErrorCode; fieldErrors?: Record<string, string> } {
+  if (err instanceof AppError) return { ok: false, error: err.message, code: err.code, ...(err.field ? { fieldErrors: { [err.field]: err.message } } : {}) };
   console.error(err);
   return { ok: false, error: "Something went wrong. Please try again." };
 }

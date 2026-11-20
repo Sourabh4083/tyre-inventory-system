@@ -49,6 +49,7 @@ export default async function EditBillPage({ params }: { params: Promise<{ id: s
     billedAt: toLocalInput(bill.createdAt),
     customerName: bill.customerName ?? "",
     customerPhone: bill.customerPhone ?? "",
+    vehicleNumber: bill.vehicleNumber ?? "",
     discount: Number(bill.discount) > 0 ? trimMoney(bill.discount) : "",
     paymentMethod: counter[0]?.method ?? bill.paymentMethod ?? "CASH",
     payLater,

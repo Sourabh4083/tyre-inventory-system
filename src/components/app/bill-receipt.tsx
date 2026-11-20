@@ -44,6 +44,12 @@ export function BillReceipt({ bill, settings, className }: { bill: BillDTO; sett
             </dd>
           </>
         ) : null}
+        {bill.vehicleNumber ? (
+          <>
+            <dt className="text-muted-foreground">Vehicle</dt>
+            <dd className="text-right font-mono">{bill.vehicleNumber}</dd>
+          </>
+        ) : null}
         <dt className="text-muted-foreground">Billed by</dt>
         <dd className="text-right">{bill.createdByName}</dd>
       </dl>

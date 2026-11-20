@@ -17,6 +17,7 @@ export function buildBillWhatsappMessage(bill: BillDTO, billUrl: string, busines
     `Hi${name ? ` ${name}` : ""}, thank you for visiting *${businessName}*!`,
     "",
     `*Bill No:* ${bill.billNumber} · ${formatDate(bill.createdAt)}`,
+    ...(bill.vehicleNumber ? [`*Vehicle:* ${bill.vehicleNumber}`] : []),
     ...bill.items.map((i) => `• ${i.name}${i.quantity > 1 ? ` × ${i.quantity}` : ""} – ${formatMoney(i.lineTotal, sym)}`),
     ...(Number(bill.discount) > 0 ? [`Discount – ${formatMoney(bill.discount, sym)}`] : []),
     `*Total: ${formatMoney(bill.total, sym)}*${!due && bill.payments.length ? ` (Paid by ${paymentMethodsLabel(bill.payments)})` : ""}`,

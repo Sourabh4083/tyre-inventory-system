@@ -60,6 +60,7 @@ type BillDraft = {
   employeeIds: string[];
   customerName: string;
   customerPhone: string;
+  vehicleNumber?: string;
   discount: string;
   payment: PaymentMethod;
   payLater: boolean;
@@ -105,6 +106,7 @@ export type BillEditInit = {
   billedAt: string;
   customerName: string;
   customerPhone: string;
+  vehicleNumber?: string;
   discount: string;
   paymentMethod: PaymentMethod;
   payLater: boolean;
@@ -128,6 +130,7 @@ export type OpenBillInit = {
   employeeIds: string[];
   customerName: string;
   customerPhone: string;
+  vehicleNumber?: string;
   discount: string;
   notes: string;
   lines: Omit<Line, "key">[];
@@ -158,6 +161,7 @@ export function BillComposer({
   const [discarding, setDiscarding] = useState(false);
   const [customerName, setCustomerName] = useState(init?.customerName ?? "");
   const [customerPhone, setCustomerPhone] = useState(init?.customerPhone ?? "");
+  const [vehicleNumber, setVehicleNumber] = useState(init?.vehicleNumber ?? "");
   const [discount, setDiscount] = useState(init?.discount ?? "");
   const [payment, setPayment] = useState<PaymentMethod>(edit?.paymentMethod ?? "CASH");
   const [payLater, setPayLater] = useState(edit?.payLater ?? false);
@@ -184,6 +188,7 @@ export function BillComposer({
     setEmployeeIds([]);
     setCustomerName("");
     setCustomerPhone("");
+    setVehicleNumber("");
     setDiscount("");
     setPayment("CASH");
     setPayLater(false);
@@ -207,6 +212,7 @@ export function BillComposer({
     setEmployeeIds((draft.employeeIds ?? []).filter((id) => employees.some((e) => e.id === id)));
     setCustomerName(draft.customerName ?? "");
     setCustomerPhone(draft.customerPhone ?? "");
+    setVehicleNumber(draft.vehicleNumber ?? "");
     setDiscount(draft.discount ?? "");
     if (draft.payment) setPayment(draft.payment);
     setPayLater(Boolean(draft.payLater));
@@ -222,7 +228,7 @@ export function BillComposer({
 
   useEffect(() => {
     if (!isNew || !draftLoaded.current) return;
-    const started = lines.length > 0 || customerName.trim() !== "" || customerPhone.trim() !== "" || notes.trim() !== "";
+    const started = lines.length > 0 || customerName.trim() !== "" || customerPhone.trim() !== "" || vehicleNumber.trim() !== "" || notes.trim() !== "";
     writeDraft(
       started
         ? {
@@ -231,6 +237,7 @@ export function BillComposer({
             employeeIds,
             customerName,
             customerPhone,
+            vehicleNumber,
             discount,
             payment,
             payLater,
@@ -241,7 +248,7 @@ export function BillComposer({
           }
         : null,
     );
-  }, [isNew, requestKey, lines, employeeIds, customerName, customerPhone, discount, payment, payLater, paidNow, split, parts, notes]);
+  }, [isNew, requestKey, lines, employeeIds, customerName, customerPhone, vehicleNumber, discount, payment, payLater, paidNow, split, parts, notes]);
 
   const totals = useMemo(() => {
     const subtotal = lines.reduce((sum, l) => sum + toPaise(l.unitPrice) * l.quantity, 0);
@@ -335,6 +342,7 @@ export function BillComposer({
       ),
       customerName,
       customerPhone,
+      vehicleNumber,
       discount,
       paymentMethod: payment,
       payLater,
@@ -396,6 +404,7 @@ export function BillComposer({
           employeeIds,
           customerName,
           customerPhone,
+          vehicleNumber,
           discount,
           notes,
           items: lines.map((l) =>
@@ -622,6 +631,20 @@ export function BillComposer({
             required={payLater}
             currencySymbol={currencySymbol}
           />
+
+          <Field label="Vehicle number" htmlFor="bill-vehicle" error={errors.vehicleNumber} hint="Optional. Printed on the bill and searchable later.">
+            <Input
+              id="bill-vehicle"
+              className="h-11 font-mono uppercase"
+              value={vehicleNumber}
+              onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
+              placeholder="e.g. CG 04 AB 1234"
+              maxLength={20}
+              autoCapitalize="characters"
+              autoComplete="off"
+              aria-invalid={Boolean(errors.vehicleNumber)}
+            />
+          </Field>
 
           {edit ? (
             <Field label="Bill date & time" htmlFor="bill-date" error={errors.billedAt}>

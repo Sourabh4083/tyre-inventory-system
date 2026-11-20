@@ -67,6 +67,7 @@ export function OrderForm({
   currencySymbol,
   categories,
   globalThreshold,
+  defaultBrand,
   isOwner,
   showCost,
   initial,
@@ -76,8 +77,10 @@ export function OrderForm({
   costsOnly?: boolean;
   currencySymbol: string;
   /** For adding a product that isn't in the inventory yet, right from the order. */
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; isTyre?: boolean }[];
   globalThreshold: number;
+  /** The shop's main tyre brand, filled in on a tyre added from here. */
+  defaultBrand?: string;
   isOwner: boolean;
   /** Costs are owner-only; the manager orders by product and quantity alone. */
   showCost: boolean;
@@ -348,6 +351,7 @@ export function OrderForm({
                 isOwner={isOwner}
                 globalThreshold={globalThreshold}
                 defaultName={newProductName}
+                defaultBrand={defaultBrand}
                 hideStartingStock
                 onCancel={() => setNewProductName(null)}
                 onSaved={(p) => {
