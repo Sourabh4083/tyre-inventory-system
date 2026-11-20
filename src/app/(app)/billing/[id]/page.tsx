@@ -1,0 +1,95 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ArrowLeft, BellRing, CheckCircle2 } from "lucide-react";
+import { requirePermissionPage } from "@/lib/auth/guards";
+import { getSettings } from "@/lib/services/settings";
+import { billForViewer, getBill, getOriginalBillSummary, getShareLinkExpiry, mayDeletePayment } from "@/lib/services/billing";
+import { can } from "@/lib/permissions";
+import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { getBillReminderNote } from "@/lib/services/service-reminders";
+import { PageHeader } from "@/components/app/page-header";
+import { BillReceipt } from "@/components/app/bill-receipt";
+import { BillDetailActions } from "@/components/app/bill-detail-actions";
+import { BillPayments } from "@/components/app/bill-payments";
+import { BillStatusBadge } from "@/components/app/bill-badges";
+import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = { title: "Bill" };
+
+export default async function BillDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ new?: string }> }) {
+  const user = await requirePermissionPage("bill.view");
+  const [{ id }, { new: isNew }] = await Promise.all([params, searchParams]);
+  const [settings, found] = await Promise.all([getSettings(), getBill(id)]);
+  if (!found) notFound();
+  const bill = billForViewer(found, user.role);
+  const [original, shareExpiresAt, reminder] = await Promise.all([
+    bill.editedAt ? getOriginalBillSummary(bill.id) : null,
+    user.role === "OWNER" ? getShareLinkExpiry(bill.id) : null,
+    isNew && bill.status === "COMPLETED" ? getBillReminderNote(bill.id) : null,
+  ]);
+  // A bill paid in full at the counter needs no payments section; the receipt says how it was paid.
+  const paidAtCounter = bill.payments.length > 0 && bill.payments.every((p) => p.atBilling) && bill.amountPaid === bill.total;
+  const showPayments = Number(bill.total) > 0 && !paidAtCounter;
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-5">
+      <div className="print:hidden">
+        <Button variant="ghost" size="sm" className="-ml-2 mb-2 text-muted-foreground" render={<Link href="/billing" />}>
+          <ArrowLeft /> All bills
+        </Button>
+        <PageHeader
+          title={bill.billNumber}
+          description={
+            <span className="flex flex-wrap items-center gap-2">
+              {formatDateTime(bill.createdAt)} · billed by {bill.createdByName}
+              {bill.employeeNames.length ? ` · handled by ${bill.employeeNames.join(", ")}` : ""}
+              <BillStatusBadge status={bill.status} />
+            </span>
+          }
+        />
+        {isNew && bill.status === "COMPLETED" ? (
+          <p role="status" className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900 dark:text-emerald-200">
+            <CheckCircle2 className="size-4.5 shrink-0" /> Bill saved and stock updated. {bill.customerPhone ? "Send it on WhatsApp, print the receipt" : "Print the receipt"} or start the next bill.
+          </p>
+        ) : null}
+        {reminder?.serviceOn || reminder?.replaceOn || reminder?.countedAsService ? (
+          <p role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+            <BellRing className="mt-0.5 size-4.5 shrink-0 text-primary" />
+            <span>
+              {reminder.countedAsService
+                ? `Counted as a servicing visit. ${reminder.serviceOn ? `Next servicing call on ${formatDate(reminder.serviceOn)}` : `Next call is for the replacement${reminder.replaceOn ? ` on ${formatDate(reminder.replaceOn)}` : ""}`}.`
+                : `Added to Calls: servicing call on ${reminder.serviceOn ? formatDate(reminder.serviceOn) : "-"}${reminder.replaceOn ? `, replacement on ${formatDate(reminder.replaceOn)} (same card)` : ""}.`}{" "}
+              <Link href="/calls?tab=later" className="font-medium text-primary hover:underline">
+                See Calls › Call later
+              </Link>
+            </span>
+          </p>
+        ) : null}
+        {bill.editedAt ? (
+          <p role="status" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+            Edited {formatDateTime(bill.editedAt)} by {bill.editedByName ?? "owner"}
+            {original ? ` · originally ${formatMoney(original.total, settings.currencySymbol)} on ${formatDateTime(original.createdAt)}` : ""}. Only you can see this note.
+          </p>
+        ) : null}
+        {bill.status === "CANCELLED" ? (
+          <p role="status" className="mb-4 rounded-xl border border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-900 dark:text-red-200">
+            Cancelled {bill.cancelledAt ? formatDateTime(bill.cancelledAt) : ""} by {bill.cancelledByName ?? "owner"}: {bill.cancelReason}. Product stock was restored.
+          </p>
+        ) : null}
+        <BillDetailActions bill={bill} role={user.role} currencySymbol={settings.currencySymbol} businessName={settings.businessName} shareExpiresAt={shareExpiresAt} />
+      </div>
+
+      {showPayments ? (
+        <BillPayments
+          bill={bill}
+          canCollect={can(user.role, "bill.collect")}
+          deletableIds={bill.payments.filter((p) => mayDeletePayment({ ...p, createdAt: p.paidAt }, user)).map((p) => p.id)}
+          currencySymbol={settings.currencySymbol}
+        />
+      ) : null}
+
+      <BillReceipt bill={bill} businessName={settings.businessName} currencySymbol={settings.currencySymbol} />
+    </div>
+  );
+}

@@ -1,0 +1,655 @@
+// Salon & Hair Inventory Management System - Prisma schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  OWNER
+  MANAGER
+}
+
+enum ProductStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum MovementType {
+  INITIAL_STOCK
+  STOCK_IN
+  SALE
+  ADJUSTMENT
+  BILL_CANCELLED
+  BILL_EDITED
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  CARD
+}
+
+enum BillStatus {
+  COMPLETED
+  CANCELLED
+}
+
+enum BillItemKind {
+  PRODUCT
+  SERVICE
+}
+
+enum OrderStatus {
+  ACTIVE
+  RECEIVED
+  CLOSED
+}
+
+enum EmployeeDocumentKind {
+  AADHAAR_FRONT
+  AADHAAR_BACK
+  OTHER
+}
+
+enum EnquiryStatus {
+  NEW
+  NO_ANSWER
+  CALL_BACK
+  COMING
+  NOT_INTERESTED
+  VISITED
+}
+
+/// Why a number is on the Calls page.
+enum EnquiryKind {
+  /// A new customer enquiry (JustDial, WhatsApp, phone call).
+  LEAD
+  /// A customer who bought a product that needs servicing; due every few weeks.
+  SERVICE
+  /// The same customer's product is due for replacement.
+  REPLACE
+}
+
+enum CallResult {
+  COMING
+  CALL_BACK
+  NO_ANSWER
+  NOT_INTERESTED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  HALF_DAY
+  HOLIDAY
+  LEAVE
+  ABSENT
+}
+
+enum Unit {
+  PIECE
+  PACK
+  BOX
+  BOTTLE
+  ROLL
+  SET
+  PAIR
+  METER
+}
+
+model User {
+  id             String   @id @default(cuid())
+  name           String
+  email          String   @unique
+  passwordHash   String
+  role           Role     @default(MANAGER)
+  isActive       Boolean  @default(true)
+  /// Raised on password reset; login cookies carrying an older value stop working.
+  sessionVersion Int      @default(0)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  movements         StockMovement[]
+  auditLogs         AuditLog[]
+  createdProducts   Product[]          @relation("ProductCreatedBy")
+  updatedProducts   Product[]          @relation("ProductUpdatedBy")
+  bills             Bill[]             @relation("BillCreatedBy")
+  cancelledBills    Bill[]             @relation("BillCancelledBy")
+  createdEmployees  Employee[]         @relation("EmployeeCreatedBy")
+  updatedEmployees  Employee[]         @relation("EmployeeUpdatedBy")
+  uploadedDocuments EmployeeDocument[] @relation("EmployeeDocumentUploadedBy")
+  salaryPayments    SalaryPayment[]    @relation("SalaryPaymentCreatedBy")
+  createdOrders     PurchaseOrder[]    @relation("OrderCreatedBy")
+  closedOrders      PurchaseOrder[]    @relation("OrderClosedBy")
+  editedBills       Bill[]             @relation("BillEditedBy")
+  advances          EmployeeAdvance[]  @relation("AdvanceCreatedBy")
+  expenses          Expense[]          @relation("ExpenseCreatedBy")
+  cashDeposits      CashDeposit[]      @relation("CashDepositCreatedBy")
+  ownerWithdrawals  OwnerWithdrawal[]  @relation("OwnerWithdrawalCreatedBy")
+  billPayments      BillPayment[]      @relation("BillPaymentCreatedBy")
+  enquiries         Enquiry[]          @relation("EnquiryCreatedBy")
+  enquiryCalls      EnquiryCall[]      @relation("EnquiryCallBy")
+  attendanceMarked  Attendance[]       @relation("AttendanceMarkedBy")
+  openBills         OpenBill[]         @relation("OpenBillCreatedBy")
+
+  @@index([role, isActive])
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  /// Products here (e.g. wigs) bring the customer back for servicing and replacement; selling one adds them to Calls.
+  needsService Boolean @default(false)
+  products  Product[]
+}
+
+model Product {
+  id                String        @id @default(cuid())
+  productNumber     String        @unique // PRD-000001
+  name              String
+  sku               String?       @unique
+  barcode           String?       @unique
+  categoryId        String
+  description       String?
+  costPrice         Decimal?      @db.Decimal(12, 2)
+  sellingPrice      Decimal?      @db.Decimal(12, 2)
+  quantity          Int           @default(0)
+  // Per-product override; null means "use the shop-wide threshold from settings".
+  lowStockThreshold Int?
+  unit              Unit          @default(PIECE)
+  location          String?
+  notes             String?
+  status            ProductStatus @default(ACTIVE)
+  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime      @updatedAt @db.Timestamptz(3)
+  createdById       String?
+  updatedById       String?
+
+  category   Category            @relation(fields: [categoryId], references: [id])
+  createdBy  User?               @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  updatedBy  User?               @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
+  movements  StockMovement[]
+  billItems  BillItem[]
+  orderItems PurchaseOrderItem[]
+
+  @@index([name])
+  @@index([status, quantity])
+  @@index([status, categoryId])
+  @@index([updatedAt])
+}
+
+model StockMovement {
+  id               String         @id @default(cuid())
+  productId        String
+  type             MovementType
+  quantityChange   Int
+  previousQuantity Int
+  newQuantity      Int
+  unitCost         Decimal?       @db.Decimal(12, 2)
+  /// How the shop paid for stock received on an order; null for every other movement.
+  paymentMethod    PaymentMethod?
+  note             String?
+  performedById    String
+  billId           String?
+  purchaseOrderId  String?
+  createdAt        DateTime       @default(now()) @db.Timestamptz(3)
+
+  product       Product        @relation(fields: [productId], references: [id])
+  performedBy   User           @relation(fields: [performedById], references: [id])
+  bill          Bill?          @relation(fields: [billId], references: [id])
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+
+  @@index([productId, createdAt])
+  @@index([createdAt])
+  @@index([performedById])
+  @@index([billId])
+  @@index([purchaseOrderId])
+}
+
+/// A saved salon service (haircut, styling, ...) that can be added to a bill. No stock involved.
+model Service {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  price     Decimal    @db.Decimal(12, 2)
+  isActive  Boolean    @default(true)
+  sortOrder Int        @default(0)
+  createdAt DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime   @updatedAt @db.Timestamptz(3)
+  billItems BillItem[]
+}
+
+/// A customer bill. Product lines reduce stock through SALE movements linked by billId.
+model Bill {
+  id               String         @id @default(cuid())
+  billNumber       String         @unique // BILL-000001
+  status           BillStatus     @default(COMPLETED)
+  customerName     String?
+  customerPhone    String?
+  /// Last 10 digits of customerPhone, so the same customer matches however the number was typed.
+  customerPhoneKey String?
+  subtotal         Decimal        @db.Decimal(12, 2)
+  discount         Decimal        @default(0) @db.Decimal(12, 2)
+  total            Decimal        @db.Decimal(12, 2)
+  /// How the money taken at the counter was paid; null for a "pay later" bill with nothing paid then.
+  paymentMethod    PaymentMethod? @default(CASH)
+  /// What the customer still owes (total minus payments). 0 once fully paid.
+  balanceDue       Decimal        @default(0) @db.Decimal(12, 2)
+  notes            String?
+  /// Made by the new-bill screen once per bill. Pressing Save again after a lost connection
+  /// sends the same key, so the bill is not made (and stock not taken) twice.
+  requestKey       String?        @unique
+  createdById      String
+  createdAt        DateTime       @default(now()) @db.Timestamptz(3)
+  cancelledById    String?
+  cancelledAt      DateTime?      @db.Timestamptz(3)
+  cancelReason     String?
+  // Set when the owner changes a bill after it was made. Only the owner is shown this.
+  editedAt         DateTime?      @db.Timestamptz(3)
+  editedById       String?
+  /// Secret code in the bill link sent to the customer on WhatsApp (/b/<code>); null until first sent
+  /// or after the owner turns the link off. The link stops working at shareExpiresAt.
+  shareToken       String?        @unique
+  shareExpiresAt   DateTime?      @db.Timestamptz(3)
+
+  items       BillItem[]
+  movements   StockMovement[]
+  payments    BillPayment[]
+  createdBy   User            @relation("BillCreatedBy", fields: [createdById], references: [id])
+  cancelledBy User?           @relation("BillCancelledBy", fields: [cancelledById], references: [id])
+  editedBy    User?           @relation("BillEditedBy", fields: [editedById], references: [id])
+  /// Calls entries this bill closed (a lead and/or a servicing reminder for the same number).
+  enquiries   Enquiry[]       @relation("EnquiryVisitedBill")
+  /// Servicing / replacement reminders started by this bill (it sold a product that needs servicing).
+  reminders   Enquiry[]       @relation("EnquirySourceBill")
+  /// Who worked on the customer; optional.
+  employees   Employee[]      @relation("BillEmployees")
+
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([customerPhone])
+  @@index([customerPhoneKey])
+  @@index([status, balanceDue])
+}
+
+/// Money received against a bill. A bill paid in full at the counter has one payment
+/// (atBilling); a "pay later" bill collects the rest in one or more later payments.
+model BillPayment {
+  id          String        @id @default(cuid())
+  billId      String
+  amount      Decimal       @db.Decimal(12, 2)
+  method      PaymentMethod
+  paidAt      DateTime      @default(now()) @db.Timestamptz(3)
+  /// Taken at the counter when the bill was made; follows the bill's date and method on edit.
+  atBilling   Boolean       @default(false)
+  createdById String
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+
+  bill      Bill @relation(fields: [billId], references: [id], onDelete: Cascade)
+  createdBy User @relation("BillPaymentCreatedBy", fields: [createdById], references: [id])
+
+  @@index([billId])
+  @@index([paidAt])
+}
+
+model BillItem {
+  id        String       @id @default(cuid())
+  billId    String
+  kind      BillItemKind
+  productId String?
+  serviceId String?
+  // Snapshot at time of sale so the bill never changes when catalog prices change.
+  name      String
+  quantity  Int
+  unitPrice Decimal      @db.Decimal(12, 2)
+  unitCost  Decimal?     @db.Decimal(12, 2)
+  lineTotal Decimal      @db.Decimal(12, 2)
+  sortOrder Int          @default(0)
+
+  bill    Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+  service Service? @relation(fields: [serviceId], references: [id])
+
+  @@index([billId])
+  @@index([productId])
+}
+
+/// A customer still in the shop: the manager notes each product and service as the
+/// employee uses it, then completes it into a Bill when the customer pays. No bill
+/// number and no stock change until then.
+model OpenBill {
+  id            String   @id @default(cuid())
+  customerName  String?
+  customerPhone String?
+  /// As typed in the composer; checked when the bill is completed.
+  discount      String?
+  notes         String?
+  /// The composer's lines: { kind, productId?, serviceId?, name, quantity, unitPrice }.
+  lines         Json
+  createdById   String
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
+
+  /// The employees handling the customer (at least one); this is how open bills are told apart.
+  employees Employee[] @relation("OpenBillEmployees")
+  createdBy User       @relation("OpenBillCreatedBy", fields: [createdById], references: [id])
+
+  @@index([createdAt])
+}
+
+/// Products ordered for the shop. Stays ACTIVE until every line is received or the
+/// owner closes it. Stock only changes on receipt, through STOCK_IN movements linked by purchaseOrderId.
+/// Money leaves cash/bank when the order is placed (paidAt); orders placed before that
+/// change have paidAt null and are paid on each delivery instead.
+model PurchaseOrder {
+  id               String         @id @default(cuid())
+  orderNumber      String         @unique // ORD-000001
+  status           OrderStatus    @default(ACTIVE)
+  notes            String?
+  createdById      String
+  createdAt        DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime       @updatedAt @db.Timestamptz(3)
+  closedById       String?
+  closedAt         DateTime?      @db.Timestamptz(3)
+  closeReason      String?
+  /// When and how the order was paid for: the whole ordered amount, at the moment it was placed.
+  paidAt           DateTime?      @db.Timestamptz(3)
+  paymentMethod    PaymentMethod?
+  // GST from the supplier's bill, typed as amounts. Charged to cash/bank once: with the order
+  // (prepaid orders) or on the first delivery (older orders).
+  cgst             Decimal?       @db.Decimal(12, 2)
+  sgst             Decimal?       @db.Decimal(12, 2)
+  gstPaidAt        DateTime?      @db.Timestamptz(3)
+  gstPaymentMethod PaymentMethod?
+  /// Made by the order screen once per new order. Pressing Place order again after a lost
+  /// connection sends the same key, so the order is not placed (and paid for) twice.
+  requestKey       String?        @unique
+
+  items     PurchaseOrderItem[]
+  movements StockMovement[]
+  createdBy User                @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  closedBy  User?               @relation("OrderClosedBy", fields: [closedById], references: [id])
+
+  @@index([status, createdAt])
+  @@index([gstPaidAt])
+  @@index([paidAt])
+}
+
+model PurchaseOrderItem {
+  id               String   @id @default(cuid())
+  purchaseOrderId  String
+  productId        String?
+  // Snapshot so the order still reads correctly if the product is renamed or deleted.
+  name             String
+  quantityOrdered  Int
+  quantityReceived Int      @default(0)
+  unitCost         Decimal? @db.Decimal(12, 2)
+  sortOrder        Int      @default(0)
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@unique([purchaseOrderId, productId])
+  @@index([productId])
+}
+
+model BusinessSettings {
+  id                String    @id @default("default")
+  businessName      String    @default("Salon & Hair Studio")
+  currencyCode      String    @default("INR")
+  currencySymbol    String    @default("₹")
+  lowStockThreshold Int       @default(4)
+  /// What the owner counted in the cash drawer and the bank at `openingAt`; the running
+  /// balances start from here. All null until the owner sets them.
+  openingCash       Decimal?  @db.Decimal(12, 2)
+  openingBank       Decimal?  @db.Decimal(12, 2)
+  openingAt         DateTime? @db.Timestamptz(3)
+  /// The shop's owners (partners), picked when one of them takes money from the shop.
+  ownerNames        String[]  @default([])
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String // PRODUCT_CREATED, PRODUCT_UPDATED, PRODUCT_ARCHIVED, USER_CREATED, ...
+  entityType String
+  entityId   String?
+  summary    String
+  metadata   Json?
+  actorId    String?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+}
+
+// ---------- Employees (owner-only) ----------
+
+model Employee {
+  id            String    @id @default(cuid())
+  name          String
+  phone         String?
+  email         String?
+  address       String?
+  designation   String? // e.g. Stylist, Helper, Receptionist
+  joinedAt      DateTime? @db.Timestamptz(3)
+  leftAt        DateTime? @db.Timestamptz(3)
+  isActive      Boolean   @default(true)
+  aadhaarNumber String? // 12 digits; shown masked in the UI
+  monthlySalary Decimal?  @db.Decimal(12, 2)
+  notes         String?
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
+  createdById   String?
+  updatedById   String?
+
+  createdBy  User?              @relation("EmployeeCreatedBy", fields: [createdById], references: [id])
+  updatedBy  User?              @relation("EmployeeUpdatedBy", fields: [updatedById], references: [id])
+  documents  EmployeeDocument[]
+  payments   SalaryPayment[]
+  advances   EmployeeAdvance[]
+  attendance Attendance[]
+  openBills  OpenBill[]         @relation("OpenBillEmployees")
+  bills      Bill[]             @relation("BillEmployees")
+
+  @@index([isActive, name])
+}
+
+/// Uploaded identity documents (Aadhaar card images / PDF). Bytes live in the database.
+model EmployeeDocument {
+  id           String               @id @default(cuid())
+  employeeId   String
+  kind         EmployeeDocumentKind @default(OTHER)
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  data         Bytes
+  uploadedById String?
+  createdAt    DateTime             @default(now()) @db.Timestamptz(3)
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  uploadedBy User?    @relation("EmployeeDocumentUploadedBy", fields: [uploadedById], references: [id])
+
+  @@index([employeeId])
+}
+
+model SalaryPayment {
+  id              String        @id @default(cuid())
+  employeeId      String
+  amount          Decimal       @db.Decimal(12, 2)
+  paidOn          DateTime      @db.Timestamptz(3)
+  periodMonth     String? // "2026-09": which month's salary this covers
+  // Advances taken that month and subtracted from the salary; `amount` is what was actually paid.
+  advanceDeducted Decimal?      @db.Decimal(12, 2)
+  // Pay cut for absent days, unpaid leave and half days in that month.
+  absenceDeducted Decimal?      @db.Decimal(12, 2)
+  paymentMethod   PaymentMethod @default(CASH)
+  note            String?
+  createdById     String
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+
+  employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdBy User     @relation("SalaryPaymentCreatedBy", fields: [createdById], references: [id])
+
+  @@index([employeeId, paidOn])
+}
+
+/// Money an employee takes from the shop during the month, deducted from their salary.
+model EmployeeAdvance {
+  id            String        @id @default(cuid())
+  employeeId    String
+  amount        Decimal       @db.Decimal(12, 2)
+  takenOn       DateTime      @db.Timestamptz(3)
+  paymentMethod PaymentMethod @default(CASH)
+  note          String?
+  createdById   String
+  createdAt     DateTime      @default(now()) @db.Timestamptz(3)
+
+  employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdBy User     @relation("AdvanceCreatedBy", fields: [createdById], references: [id])
+
+  @@index([employeeId, takenOn])
+  @@index([takenOn])
+}
+
+// ---------- Shop expenses ----------
+
+/// Day-to-day money spent by the shop (tea, cleaning, electricity, ...).
+model Expense {
+  id            String        @id @default(cuid())
+  spentOn       DateTime      @db.Timestamptz(3)
+  amount        Decimal       @db.Decimal(12, 2)
+  description   String
+  paymentMethod PaymentMethod @default(CASH)
+  createdById   String
+  createdAt     DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime      @updatedAt @db.Timestamptz(3)
+
+  createdBy User @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
+
+  @@index([spentOn])
+}
+
+// ---------- Calls (new-customer enquiries) ----------
+
+/// A phone number the manager has to call: a JustDial/WhatsApp lead or someone who
+/// phoned the salon (LEAD), or a customer due for servicing / replacement of a product
+/// they bought (SERVICE / REPLACE). Closes as VISITED when a bill is made for the same number.
+model Enquiry {
+  id            String        @id @default(cuid())
+  /// Usually unknown until the first call.
+  name          String?
+  /// As typed, for display and tap-to-call.
+  phone         String
+  /// Last 10 digits, so "+91 98765-43210" and "9876543210" match.
+  phoneKey      String
+  interest      String?
+  status        EnquiryStatus @default(NEW)
+  /// When to call again (NO_ANSWER, CALL_BACK).
+  nextCallOn    DateTime?     @db.Timestamptz(3)
+  /// The day the customer said they will come (COMING).
+  comingOn      DateTime?     @db.Timestamptz(3)
+  visitedBillId String?
+  visitedAt     DateTime?     @db.Timestamptz(3)
+  /// LEAD for new enquiries; SERVICE / REPLACE are added by the app when a product that needs servicing is sold.
+  kind          EnquiryKind   @default(LEAD)
+  /// SERVICE / REPLACE: the bill that sold the product; its date is the purchase date.
+  sourceBillId  String?
+  /// SERVICE: when this servicing round started (the purchase or the last servicing visit).
+  cycleStart    DateTime?     @db.Timestamptz(3)
+  createdById   String
+  createdAt     DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime      @updatedAt @db.Timestamptz(3)
+
+  calls       EnquiryCall[]
+  createdBy   User          @relation("EnquiryCreatedBy", fields: [createdById], references: [id])
+  visitedBill Bill?         @relation("EnquiryVisitedBill", fields: [visitedBillId], references: [id], onDelete: SetNull)
+  sourceBill  Bill?         @relation("EnquirySourceBill", fields: [sourceBillId], references: [id], onDelete: SetNull)
+
+  @@index([visitedBillId])
+  @@index([sourceBillId])
+  @@index([kind, phoneKey, status])
+  @@index([status, nextCallOn])
+  @@index([status, comingOn])
+  @@index([phoneKey])
+}
+
+/// One phone call to an enquiry and what the customer said.
+model EnquiryCall {
+  id         String     @id @default(cuid())
+  enquiryId  String
+  result     CallResult
+  note       String?
+  /// The date picked with COMING / CALL_BACK, or tomorrow for NO_ANSWER.
+  followUpOn DateTime?  @db.Timestamptz(3)
+  calledById String
+  calledAt   DateTime   @default(now()) @db.Timestamptz(3)
+
+  enquiry  Enquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  calledBy User    @relation("EnquiryCallBy", fields: [calledById], references: [id])
+
+  @@index([enquiryId, calledAt])
+}
+
+// ---------- Attendance ----------
+
+/// One employee's attendance on one day. A day with no row is "not marked".
+model Attendance {
+  id         String           @id @default(cuid())
+  employeeId String
+  /// Midnight of the day in the salon's zone.
+  date       DateTime         @db.Timestamptz(3)
+  status     AttendanceStatus
+  /// LEAVE only: the owner decides whether it is paid. null = not decided yet (cut until then).
+  leavePaid  Boolean?
+  note       String?
+  markedById String
+  createdAt  DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime         @updatedAt @db.Timestamptz(3)
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  markedBy User     @relation("AttendanceMarkedBy", fields: [markedById], references: [id])
+
+  @@unique([employeeId, date])
+  @@index([date])
+}
+
+/// Cash the owner carried from the drawer to the bank: Cash goes down and Bank goes up
+/// by the same amount. Not spending, so it never touches profit.
+model CashDeposit {
+  id          String   @id @default(cuid())
+  amount      Decimal  @db.Decimal(12, 2)
+  movedOn     DateTime @db.Timestamptz(3)
+  createdById String
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  createdBy User @relation("CashDepositCreatedBy", fields: [createdById], references: [id])
+
+  @@index([movedOn])
+}
+
+/// Money one of the owners took from the shop for themselves. Lowers Cash or Bank,
+/// but is not shop spending, so it never touches profit. The name is kept as typed so
+/// renaming an owner in Settings leaves old entries as they were.
+model OwnerWithdrawal {
+  id            String        @id @default(cuid())
+  ownerName     String
+  amount        Decimal       @db.Decimal(12, 2)
+  takenOn       DateTime      @db.Timestamptz(3)
+  paymentMethod PaymentMethod @default(CASH)
+  note          String?
+  createdById   String
+  createdAt     DateTime      @default(now()) @db.Timestamptz(3)
+
+  createdBy User @relation("OwnerWithdrawalCreatedBy", fields: [createdById], references: [id])
+
+  @@index([takenOn])
+  @@index([ownerName, takenOn])
+}

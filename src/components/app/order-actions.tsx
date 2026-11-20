@@ -1,0 +1,332 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import Link from "next/link";
+import { toast } from "sonner";
+import { Ban, CheckCircle2, LoaderCircle, MoreHorizontal, PackageCheck, Pencil } from "lucide-react";
+import { closeOrderAction, receiveOrderAction } from "@/app/actions/orders";
+import type { OrderDTO } from "@/lib/services/orders";
+import type { Role } from "@/generated/prisma/enums";
+import { can } from "@/lib/permissions";
+import { cn } from "@/lib/utils";
+import { formatMoney } from "@/lib/format";
+import { fromPaise, toPaise, trimMoney } from "@/lib/money";
+import { GstInput, PaidBy } from "@/components/app/order-form";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field } from "@/components/app/field";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+type Method = "CASH" | "UPI" | "CARD";
+
+/**
+ * The buttons on an active order: "Received" (everything arrived), "Some products
+ * missing?" (enter what actually came) and, for the owner, Edit / Close order.
+ */
+export function OrderActions({ order, role, currencySymbol, className }: { order: OrderDTO; role: Role; currencySymbol: string; className?: string }) {
+  const [dialog, setDialog] = useState<"all" | "partial" | "close" | null>(null);
+  const canManage = can(role, "order.manage");
+  // After a delivery only the amounts can be fixed (cost per unit, GST, note).
+  const editLabel = order.totalReceived > 0 ? "Fix amounts" : "Edit order";
+  if (order.status !== "ACTIVE") {
+    if (!canManage || order.totalReceived === 0) return null;
+    return (
+      <div className={cn("flex flex-wrap items-center gap-2", className)}>
+        <Button size="lg" variant="outline" className="h-11" render={<Link href={`/orders/${order.id}/edit`} />}>
+          <Pencil /> {editLabel}
+        </Button>
+      </div>
+    );
+  }
+
+  const canReceive = can(role, "order.receive") && order.receivableLines > 0;
+  const canEdit = canManage;
+  // GST is owner-only and charged once, so on an older order it can be typed until the
+  // first delivery. A prepaid order already paid it with the order.
+  const gst = role === "OWNER" && !order.gstPaid && !order.paidAt ? { currencySymbol } : null;
+
+  return (
+    <div className={cn("flex flex-wrap items-center gap-2", className)}>
+      {canReceive ? (
+        <>
+          <Button size="lg" className="h-11" onClick={() => setDialog("all")}>
+            <PackageCheck /> Received
+          </Button>
+          <Button size="lg" variant="outline" className="h-11" onClick={() => setDialog("partial")}>
+            Some products missing?
+          </Button>
+        </>
+      ) : null}
+      {canManage ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button size="icon-lg" variant="ghost" className="size-11" aria-label={`More actions for ${order.orderNumber}`} />}>
+            <MoreHorizontal />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {canEdit ? (
+              <DropdownMenuItem render={<Link href={`/orders/${order.id}/edit`} />}>
+                <Pencil /> {editLabel}
+              </DropdownMenuItem>
+            ) : null}
+            <DropdownMenuItem variant="destructive" onClick={() => setDialog("close")}>
+              <Ban /> Close order
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : null}
+
+      {canReceive ? <ReceiveAllDialog order={order} gst={gst} open={dialog === "all"} onOpenChange={(o) => setDialog(o ? "all" : null)} /> : null}
+      {canReceive ? <ReceivePartialDialog order={order} gst={gst} open={dialog === "partial"} onOpenChange={(o) => setDialog(o ? "partial" : null)} /> : null}
+      {canManage ? <CloseOrderDialog order={order} currencySymbol={currencySymbol} open={dialog === "close"} onOpenChange={(o) => setDialog(o ? "close" : null)} /> : null}
+    </div>
+  );
+}
+
+function receivedToast(before: OrderDTO, after: OrderDTO) {
+  const units = after.totalReceived - before.totalReceived;
+  toast.success(`${plural(units, "unit")} added to stock`, {
+    description: after.status === "RECEIVED" ? `${after.orderNumber} is fully received.` : `${after.orderNumber} is still waiting for ${plural(after.totalPending, "unit")}.`,
+  });
+}
+
+type GstProp = { currencySymbol: string } | null;
+
+function useGst(order: OrderDTO) {
+  const [cgst, setCgst] = useState(order.cgst ? trimMoney(order.cgst) : "");
+  const [sgst, setSgst] = useState(order.sgst ? trimMoney(order.sgst) : "");
+  return { cgst, sgst, setCgst, setSgst };
+}
+
+/** CGST/SGST from the supplier's bill, with the bill total for this delivery to check against the paper. */
+function GstFields({ id, gst, state, itemsPaise }: { id: string; gst: NonNullable<GstProp>; state: ReturnType<typeof useGst>; itemsPaise: number }) {
+  const total = itemsPaise + toPaise(state.cgst) + toPaise(state.sgst);
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-3">
+        <GstInput id={`${id}-cgst`} label="CGST" value={state.cgst} onChange={state.setCgst} currencySymbol={gst.currencySymbol} />
+        <GstInput id={`${id}-sgst`} label="SGST" value={state.sgst} onChange={state.setSgst} currencySymbol={gst.currencySymbol} />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Leave blank if the bill has no GST.{total > 0 ? ` Bill total: ${formatMoney(fromPaise(total), gst.currencySymbol)}` : ""}
+      </p>
+    </div>
+  );
+}
+
+const linePaise = (i: OrderDTO["items"][number], n: number) => (i.unitCost ? toPaise(i.unitCost) * n : 0);
+
+function ReceiveAllDialog({ order, gst, open, onOpenChange }: { order: OrderDTO; gst: GstProp; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const [pending, start] = useTransition();
+  const [method, setMethod] = useState<Method>("CASH");
+  const gstState = useGst(order);
+  const lines = order.items.filter((i) => i.pending > 0 && i.productId);
+
+  const confirm = () =>
+    start(async () => {
+      const res = await receiveOrderAction({
+        orderId: order.id,
+        lines: "ALL",
+        paymentMethod: method,
+        ...(gst ? { gst: { cgst: gstState.cgst, sgst: gstState.sgst } } : {}),
+      });
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      receivedToast(order, res.data);
+      onOpenChange(false);
+    });
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Did everything arrive?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Stock goes up for {plural(lines.length, "product")} on {order.orderNumber}. If something is missing, use “Some products missing?” instead.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <ul className="max-h-60 divide-y overflow-y-auto rounded-xl border text-sm">
+          {lines.map((i) => (
+            <li key={i.id} className="flex items-center justify-between gap-3 px-3 py-2">
+              <span className="min-w-0 truncate">{i.name}</span>
+              <span className="shrink-0 font-semibold text-emerald-700 tabular-nums dark:text-emerald-300">+{i.pending}</span>
+            </li>
+          ))}
+        </ul>
+        {gst ? <GstFields id={`gst-all-${order.id}`} gst={gst} state={gstState} itemsPaise={lines.reduce((s, i) => s + linePaise(i, i.pending), 0)} /> : null}
+        {order.paidAt ? null : <PaidBy id={`paid-all-${order.id}`} value={method} onChange={setMethod} />}
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={pending}>Not yet</AlertDialogCancel>
+          <AlertDialogAction onClick={confirm} disabled={pending}>
+            {pending ? <LoaderCircle className="animate-spin" /> : <CheckCircle2 />}
+            Yes, add to stock
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function ReceivePartialDialog({ order, gst, open, onOpenChange }: { order: OrderDTO; gst: GstProp; open: boolean; onOpenChange: (open: boolean) => void }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="font-heading text-xl">What arrived?</DialogTitle>
+          <DialogDescription>
+            Enter how many of each product came. Set 0 for anything that didn’t. The rest stays on {order.orderNumber} until it arrives.
+          </DialogDescription>
+        </DialogHeader>
+        {open ? <PartialForm order={order} gst={gst} close={() => onOpenChange(false)} /> : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PartialForm({ order, gst, close }: { order: OrderDTO; gst: GstProp; close: () => void }) {
+  const lines = order.items.filter((i) => i.pending > 0 && i.productId);
+  const [qty, setQty] = useState<Record<string, string>>(() => Object.fromEntries(lines.map((i) => [i.id, String(i.pending)])));
+  const [method, setMethod] = useState<Method>("CASH");
+  const gstState = useGst(order);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  const parsed = lines.map((i) => ({ item: i, n: Number.parseInt(qty[i.id] || "0", 10) || 0 }));
+  const over = parsed.find((p) => p.n > p.item.pending);
+  const total = parsed.reduce((s, p) => s + p.n, 0);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (over) return setError(`Only ${over.item.pending} of “${over.item.name}” are pending.`);
+    if (total === 0) return setError("Enter the quantity that arrived for at least one product.");
+    start(async () => {
+      const res = await receiveOrderAction({
+        orderId: order.id,
+        lines: parsed.map((p) => ({ itemId: p.item.id, quantity: p.n })),
+        paymentMethod: method,
+        ...(gst ? { gst: { cgst: gstState.cgst, sgst: gstState.sgst } } : {}),
+      });
+      if (!res.ok) return setError(res.error);
+      receivedToast(order, res.data);
+      close();
+    });
+  };
+
+  return (
+    <form onSubmit={submit} className="flex min-h-0 flex-col gap-4">
+      <ul className="-mx-1 min-h-0 flex-1 divide-y overflow-y-auto rounded-xl border">
+        {parsed.map(({ item, n }) => (
+          <li key={item.id} className="flex items-center gap-3 px-3 py-2.5">
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium">{item.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {item.pending} pending{item.quantityReceived > 0 ? ` · ${item.quantityReceived} already received` : ""}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={item.pending}
+                value={qty[item.id]}
+                onFocus={(e) => e.currentTarget.select()}
+                onChange={(e) => setQty((q) => ({ ...q, [item.id]: e.target.value.replace(/[^0-9]/g, "") }))}
+                aria-label={`Quantity of ${item.name} that arrived`}
+                aria-invalid={n > item.pending}
+                className="h-11 w-20 text-center text-base font-semibold tabular-nums"
+              />
+              <span className="w-10 text-xs text-muted-foreground tabular-nums">/ {item.pending}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {gst ? <GstFields id={`gst-part-${order.id}`} gst={gst} state={gstState} itemsPaise={parsed.reduce((s, p) => s + linePaise(p.item, Math.min(p.n, p.item.pending)), 0)} /> : null}
+      {order.paidAt ? null : <PaidBy id={`paid-part-${order.id}`} value={method} onChange={setMethod} />}
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <DialogFooter>
+        <Button type="button" variant="outline" size="lg" className="h-11" onClick={close} disabled={pending}>
+          Cancel
+        </Button>
+        <Button type="submit" size="lg" className="h-11" disabled={pending || total === 0 || Boolean(over)}>
+          {pending ? <LoaderCircle className="animate-spin" /> : <PackageCheck />}
+          Add {plural(total, "unit")} to stock
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+function CloseOrderDialog({ order, currencySymbol, open, onOpenChange }: { order: OrderDTO; currencySymbol: string; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const refund = order.refund && order.paymentMethod ? `${formatMoney(order.refund, currencySymbol)} back to ${order.paymentMethod === "CASH" ? "Cash" : "Bank"}` : null;
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  const confirm = () => {
+    setError(null);
+    start(async () => {
+      const res = await closeOrderAction({ orderId: order.id, reason });
+      if (!res.ok) {
+        setError(res.fieldErrors?.reason ?? res.error);
+        return;
+      }
+      toast.success(`${order.orderNumber} closed`, { description: refund ? `${refund}. Stock was not changed.` : "Stock was not changed." });
+      onOpenChange(false);
+    });
+  };
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Close {order.orderNumber}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {order.totalReceived === 0
+              ? "Nothing has arrived on this order. Closing it stops waiting for it. Stock does not change."
+              : `${plural(order.totalPending, "unit")} still pending will be marked as not received. Products already received stay in stock.`}
+          </AlertDialogDescription>
+          {refund ? (
+            <p className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+              Money for what didn&apos;t come: <span className="font-semibold">{refund}</span>.
+            </p>
+          ) : null}
+        </AlertDialogHeader>
+        <Field label="Reason" htmlFor={`close-${order.id}`} required error={error ?? undefined}>
+          <Input
+            id={`close-${order.id}`}
+            className="h-11"
+            autoFocus
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Not available at the shop"
+            maxLength={300}
+            aria-invalid={Boolean(error)}
+          />
+        </Field>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={pending}>Keep waiting</AlertDialogCancel>
+          <AlertDialogAction onClick={confirm} disabled={pending || reason.trim().length < 3} variant="destructive">
+            {pending ? <LoaderCircle className="animate-spin" /> : null}
+            Close order
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
