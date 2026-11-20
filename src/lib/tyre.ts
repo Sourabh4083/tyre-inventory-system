@@ -62,10 +62,17 @@ export function parseTyreSize(raw: string | null | undefined): ParsedSize | null
   }
 
   // Metric car/SUV sizes typed loosely: "1856515", "185 65 15", "185/65r15", "185/65 ZR15".
-  const metric = s.match(/^(\d{3})\s*[/ ]?\s*(\d{2})\s*(Z?R)?\s*(\d{2})$/);
-  if (metric && (metric[3] || /^\d{7}$/.test(s) || /^\d{3}[ /]\d{2} \d{2}$/.test(s))) {
-    const [, width, aspect, zr, rim] = metric;
-    s = `${width}/${aspect} ${zr === "ZR" ? "ZR" : "R"}${rim}`;
+  // ZR can also go at the end of the short form ("2254517ZR", "2254517 ZR"), and a load/speed
+  // index after the size ("225/45R17 94W") is kept. Bare digits mean an ordinary R tyre.
+  const indexMatch = s.match(/\s+(\d{2,3}(?:\/\d{2,3})?[A-Z])$/);
+  const head = indexMatch ? s.slice(0, indexMatch.index) : s;
+  const metric = head.match(/^(\d{3})\s*[/ ]?\s*(\d{2})\s*(Z?R)?\s*(\d{2})(?:\s*(ZR))?$/);
+  const bareDigits = /^\d{7}$/.test(head) || /^\d{3}[ /]\d{2} \d{2}$/.test(head);
+  if (metric && (metric[3] || metric[5] || bareDigits)) {
+    const [, width, aspect, rTyped, rim, zrAfter] = metric;
+    const zr = rTyped === "ZR" || Boolean(zrAfter);
+    s = `${width}/${aspect} ${zr ? "ZR" : "R"}${rim}${indexMatch ? ` ${indexMatch[1]}` : ""}`;
+    return { size: s, key: `${width}${aspect}${rim}`, rimInch: Number(rim), construction: "RADIAL", plyRating };
   } else {
     // Tidy spacing around separators: "10.00 - 20" -> "10.00-20", "185 / 65" -> "185/65".
     s = s.replace(/\s*([/-])\s*/g, "$1");

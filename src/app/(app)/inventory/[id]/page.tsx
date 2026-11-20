@@ -59,14 +59,13 @@ export default async function ProductDetailPage({
         { label: "Rim", value: product.rimInch ? `${Number(product.rimInch)} inch` : "—" },
         { label: "Ply rating", value: product.plyRating ? `${product.plyRating}PR` : "—" },
         { label: "Tread depth (NSD)", value: product.nsdMm ? `${Number(product.nsdMm)} mm` : "—" },
-        ...(product.materialCode ? [{ label: "Material code", value: <span className="font-mono">{product.materialCode}</span> }] : []),
       ]
     : [];
 
   const facts: { label: string; value: React.ReactNode }[] = [
     ...tyreFacts,
     { label: "Product no.", value: <span className="font-mono">{product.productNumber}</span> },
-    { label: "SKU", value: product.sku ? <span className="font-mono">{product.sku}</span> : "—" },
+    { label: "Company code", value: product.materialCode || product.sku ? <span className="font-mono">{product.materialCode ?? product.sku}</span> : "—" },
     { label: "Barcode", value: product.barcode ? <span className="font-mono">{product.barcode}</span> : "—" },
     { label: "Category", value: product.categoryName },
     { label: "Unit", value: UNIT_LABEL[product.unit] },

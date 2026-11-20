@@ -347,7 +347,13 @@ export async function findProductByCode(code: string): Promise<ProductDTO | null
   const row =
     (await prisma.product.findFirst({ where: { barcode: value }, include: productInclude })) ??
     (await prisma.product.findFirst({
-      where: { OR: [{ sku: { equals: value, mode: "insensitive" } }, { productNumber: { equals: value, mode: "insensitive" } }] },
+      where: {
+        OR: [
+          { materialCode: { equals: value, mode: "insensitive" } },
+          { sku: { equals: value, mode: "insensitive" } },
+          { productNumber: { equals: value, mode: "insensitive" } },
+        ],
+      },
       include: productInclude,
     }));
   return row ? toProductDTO(row, settings.lowStockThreshold) : null;

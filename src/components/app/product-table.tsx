@@ -37,7 +37,7 @@ export function ProductTable({
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">
               <TableHead className="pl-4">Product</TableHead>
-              <TableHead>SKU</TableHead>
+              <TableHead>Code</TableHead>
               <TableHead>Barcode</TableHead>
               <TableHead>Category</TableHead>
               <TableHead className="text-right">Price</TableHead>
@@ -56,7 +56,7 @@ export function ProductTable({
                     <span className="block truncate text-xs text-muted-foreground">{[p.productNumber, tyreSpecLine(p)].filter(Boolean).join(" · ")}</span>
                   </Link>
                 </TableCell>
-                <TableCell className="font-mono text-xs text-muted-foreground">{p.sku ?? "—"}</TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">{p.materialCode ?? p.sku ?? "—"}</TableCell>
                 <TableCell className="font-mono text-xs text-muted-foreground">{p.barcode ?? "—"}</TableCell>
                 <TableCell className="text-sm">{p.categoryName}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatMoney(p.sellingPrice, currencySymbol)}</TableCell>

@@ -31,7 +31,7 @@ export function ProductCard({
           {tyreSpecLine(product) ? <p className="mt-0.5 truncate text-xs font-medium text-foreground/80">{tyreSpecLine(product)}</p> : null}
           <p className="mt-0.5 truncate text-xs text-muted-foreground">
             {product.categoryName}
-            {product.sku ? ` · SKU ${product.sku}` : ""}
+            {product.materialCode ?? product.sku ? ` · ${product.materialCode ?? product.sku}` : ""}
             {product.barcode ? ` · ${product.barcode}` : ""}
           </p>
         </Link>

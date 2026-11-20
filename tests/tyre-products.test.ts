@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { createProduct, listBrands, listProducts, listRimSizes, updateProduct } from "@/lib/services/products";
+import { createProduct, findProductByCode, listBrands, listProducts, listRimSizes, updateProduct } from "@/lib/services/products";
 import { createBill, listBills } from "@/lib/services/billing";
 import { saveOpenBill } from "@/lib/services/open-bills";
 import { billCreateSchema, openBillSchema, productCreateSchema } from "@/lib/validation/schemas";
@@ -56,6 +56,8 @@ describe("tyre details on products", () => {
   it("refuses a material code that another product already has", async () => {
     await createProduct(tyre({ name: "Coded A", tyreSize: "175/65 R14", materialCode: "abc123" }), owner);
     await expect(createProduct(tyre({ name: "Coded B", tyreSize: "175/65 R14", materialCode: "ABC123" }), owner)).rejects.toMatchObject({ field: "materialCode" });
+    // A scanner or Enter in the search box finds it by that code too.
+    expect((await findProductByCode("abc123"))?.name).toBe("Coded A");
   });
 });
 

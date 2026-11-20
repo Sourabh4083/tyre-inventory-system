@@ -961,7 +961,7 @@ function ProductSearch({ onPick, currencySymbol, availableFor }: { onPick: (p: P
               void onEnter();
             }
           }}
-          placeholder="Scan barcode or search name, SKU..."
+          placeholder="Scan barcode or search size, name, code..."
           className="h-12 pl-9 text-base"
           autoComplete="off"
         />

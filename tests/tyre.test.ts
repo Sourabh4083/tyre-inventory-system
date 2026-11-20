@@ -10,6 +10,18 @@ describe("parseTyreSize", () => {
 
   it("keeps ZR sizes", () => {
     expect(parseTyreSize("225/45 zr17")).toMatchObject({ size: "225/45 ZR17", key: "2254517", rimInch: 17, construction: "RADIAL" });
+    // ZR typed after the short digits form.
+    for (const typed of ["2254517ZR", "2254517 zr", "225 45 17 ZR", "225/45ZR17", "225 45 zr 17"]) {
+      expect(parseTyreSize(typed), typed).toMatchObject({ size: "225/45 ZR17", key: "2254517", rimInch: 17, construction: "RADIAL" });
+    }
+    // Bare digits stay an ordinary R tyre.
+    expect(parseTyreSize("2254517")?.size).toBe("225/45 R17");
+  });
+
+  it("keeps a load/speed index after the size", () => {
+    expect(parseTyreSize("225/45R17 94W")).toMatchObject({ size: "225/45 R17 94W", key: "2254517", rimInch: 17, construction: "RADIAL" });
+    expect(parseTyreSize("225/45 zr17 94w")).toMatchObject({ size: "225/45 ZR17 94W", key: "2254517", rimInch: 17 });
+    expect(parseTyreSize("2254517 ZR 94W")).toMatchObject({ size: "225/45 ZR17 94W", key: "2254517" });
   });
 
   it("reads truck sizes and splits off the ply rating", () => {

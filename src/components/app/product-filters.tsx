@@ -129,7 +129,7 @@ export function ProductFilters({
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search size (185/65 R15), name, SKU or barcode..."
+            placeholder="Search size (185/65 R15), name, code or barcode..."
             aria-label="Search products"
             autoFocus={autoFocus}
             autoComplete="off"

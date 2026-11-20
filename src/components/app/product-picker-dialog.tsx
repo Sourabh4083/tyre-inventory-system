@@ -27,7 +27,7 @@ type PickerProps = {
 
 /**
  * "Which product?" picker used by the dashboard quick actions (Add Stock / Record Sale).
- * Searches by name, SKU or barcode as you type. State lives in PickerBody, which
+ * Searches by size, name, code or barcode as you type. State lives in PickerBody, which
  * mounts fresh every time the dialog opens.
  */
 export function ProductPickerDialog({ open, onOpenChange, title, description, ...rest }: PickerProps) {
@@ -78,7 +78,7 @@ function PickerBody({ currencySymbol, onPick, disableOutOfStock, search = quickS
               if (!(disableOutOfStock && exact.quantity === 0)) onPick(exact);
             }
           }}
-          placeholder="Search product name, SKU or barcode..."
+          placeholder="Search size, name, code or barcode..."
           className="h-11 pl-9 text-base"
           autoComplete="off"
         />
