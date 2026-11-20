@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Banknote, BellRing, Check, Clock, CreditCard, Hourglass, LoaderCircle, Minus, Plus, Receipt, Scissors, Search, Smartphone, Split, Trash2, X } from "lucide-react";
+import { Banknote, Check, Clock, CreditCard, Hourglass, LoaderCircle, Minus, Plus, Receipt, Scissors, Search, Smartphone, Split, Trash2, X } from "lucide-react";
 import { lookupProductByCodeAction, quickSearchProductsAction } from "@/app/actions/products";
 import { createBillAction, discardOpenBillAction, saveOpenBillAction, updateBillAction } from "@/app/actions/billing";
 import type { ProductDTO } from "@/lib/services/products";
@@ -57,7 +57,6 @@ const LOST_CONNECTION_OPEN = "Couldn't reach the server. The bill is still here:
 type BillDraft = {
   requestKey: string;
   lines: Omit<Line, "key">[];
-  serviceIds: string[];
   employeeIds: string[];
   customerName: string;
   customerPhone: string;
@@ -140,7 +139,6 @@ export function BillComposer({
   edit,
   open,
   employees = [],
-  serviceProductIds = [],
 }: {
   services: ServiceDTO[];
   currencySymbol: string;
@@ -148,14 +146,10 @@ export function BillComposer({
   open?: OpenBillInit;
   /** For "Handled by". */
   employees?: { id: string; name: string }[];
-  /** Products already on the bill whose category needs servicing (for the mobile-number hint). */
-  serviceProductIds?: string[];
 }) {
   const router = useRouter();
   const init = edit ?? open;
   const [lines, setLines] = useState<Line[]>(() => (init ? init.lines.map((l) => ({ ...l, key: nextKey() })) : []));
-  // Products that need servicing: known for loaded lines, learned from search for new ones.
-  const [serviceIds, setServiceIds] = useState(() => new Set(serviceProductIds));
   const [employeeIds, setEmployeeIds] = useState<string[]>(init?.employeeIds ?? []);
   const toggleEmployee = (id: string) => {
     setEmployeeIds((prev) => (prev.includes(id) ? prev.filter((e) => e !== id) : [...prev, id]));
@@ -187,7 +181,6 @@ export function BillComposer({
   const startOver = () => {
     writeDraft(null);
     setLines([]);
-    setServiceIds(new Set());
     setEmployeeIds([]);
     setCustomerName("");
     setCustomerPhone("");
@@ -210,7 +203,6 @@ export function BillComposer({
     const draft = readDraft();
     if (!draft || draft.lines.length === 0) return;
     setLines(draft.lines.map((l) => ({ ...l, key: nextKey() })));
-    setServiceIds(new Set(draft.serviceIds ?? []));
     // Someone who left the shop since can't be picked any more.
     setEmployeeIds((draft.employeeIds ?? []).filter((id) => employees.some((e) => e.id === id)));
     setCustomerName(draft.customerName ?? "");
@@ -236,7 +228,6 @@ export function BillComposer({
         ? {
             requestKey,
             lines: lines.map((l) => ({ kind: l.kind, productId: l.productId, serviceId: l.serviceId, name: l.name, quantity: l.quantity, unitPrice: l.unitPrice, available: l.available })),
-            serviceIds: [...serviceIds],
             employeeIds,
             customerName,
             customerPhone,
@@ -250,7 +241,7 @@ export function BillComposer({
           }
         : null,
     );
-  }, [isNew, requestKey, lines, serviceIds, employeeIds, customerName, customerPhone, discount, payment, payLater, paidNow, split, parts, notes]);
+  }, [isNew, requestKey, lines, employeeIds, customerName, customerPhone, discount, payment, payLater, paidNow, split, parts, notes]);
 
   const totals = useMemo(() => {
     const subtotal = lines.reduce((sum, l) => sum + toPaise(l.unitPrice) * l.quantity, 0);
@@ -277,7 +268,6 @@ export function BillComposer({
       toast.error(`${p.name} is out of stock.`);
       return;
     }
-    if (p.needsService && !serviceIds.has(p.id)) setServiceIds((prev) => new Set(prev).add(p.id));
     setLines((prev) => {
       const existing = prev.find((l) => l.kind === "PRODUCT" && l.productId === p.id);
       if (existing) {
@@ -632,11 +622,6 @@ export function BillComposer({
             required={payLater}
             currencySymbol={currencySymbol}
           />
-          {!customerPhone.trim() && lines.some((l) => l.productId && serviceIds.has(l.productId)) ? (
-            <p className="-mt-2 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
-              <BellRing className="mt-0.5 size-4 shrink-0" /> Add the customer&apos;s mobile to get servicing reminders on the Calls page.
-            </p>
-          ) : null}
 
           {edit ? (
             <Field label="Bill date & time" htmlFor="bill-date" error={errors.billedAt}>

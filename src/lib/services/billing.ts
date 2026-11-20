@@ -6,7 +6,6 @@ import type { SessionUser } from "@/lib/auth/session";
 import { recordAudit } from "@/lib/services/audit";
 import { applyChange, lockProduct } from "@/lib/services/inventory";
 import { closeEnquiryForBill } from "@/lib/services/enquiries";
-import { removeRemindersForBill, syncRemindersForEditedBill, updateServiceReminders } from "@/lib/services/service-reminders";
 import { assertBillingEmployees } from "@/lib/services/open-bills";
 import { fromPaise, toPaise } from "@/lib/money";
 import { APP_TIMEZONE } from "@/lib/timezone";
@@ -313,7 +312,6 @@ export async function createBill(data: BillCreateData, actor: SessionUser): Prom
       }
 
       await closeEnquiryForBill(tx, bill, actor.id);
-      await updateServiceReminders(tx, bill, items, actor.id);
 
       await recordAudit(tx, {
         action: "BILL_CREATED",
@@ -571,7 +569,6 @@ export async function cancelBill(input: { billId: string; reason: string }, acto
       where: { id: bill.id },
       data: { status: "CANCELLED", cancelledById: actor.id, cancelledAt: new Date(), cancelReason: input.reason },
     });
-    await removeRemindersForBill(tx, bill, actor.id);
     await recordAudit(tx, {
       action: "BILL_CANCELLED",
       entityType: "Bill",
@@ -742,14 +739,6 @@ export async function updateBill(data: BillUpdateData, actor: SessionUser): Prom
         employees: { set: data.employeeIds.map((id) => ({ id })) },
       },
     });
-
-    await syncRemindersForEditedBill(
-      tx,
-      { id: bill.id, billNumber: bill.billNumber, customerName: data.customerName, customerPhone: data.customerPhone, createdAt: data.billedAt },
-      bill.createdAt,
-      items,
-      actor.id,
-    );
 
     const dateMoved = bill.createdAt.getTime() !== data.billedAt.getTime();
     await recordAudit(tx, {

@@ -7,7 +7,6 @@ import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/services/settings";
 import { getBill, listServices } from "@/lib/services/billing";
 import { listBillingEmployees } from "@/lib/services/open-bills";
-import { productIdsNeedingService } from "@/lib/services/products";
 import { zonedParts } from "@/lib/timezone";
 import { fromPaise, toPaise, trimMoney } from "@/lib/money";
 import { PageHeader } from "@/components/app/page-header";
@@ -82,7 +81,6 @@ export default async function EditBillPage({ params }: { params: Promise<{ id: s
         currencySymbol={settings.currencySymbol}
         edit={edit}
         employees={employees}
-        serviceProductIds={await productIdsNeedingService(Object.keys(originalQty))}
       />
     </div>
   );

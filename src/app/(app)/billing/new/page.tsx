@@ -6,7 +6,6 @@ import { requirePermissionPage } from "@/lib/auth/guards";
 import { getSettings } from "@/lib/services/settings";
 import { listServices } from "@/lib/services/billing";
 import { getOpenBill, listBillingEmployees } from "@/lib/services/open-bills";
-import { productIdsNeedingService } from "@/lib/services/products";
 import { PageHeader } from "@/components/app/page-header";
 import { BillComposer, type OpenBillInit } from "@/components/app/bill-composer";
 import { Button } from "@/components/ui/button";
@@ -54,7 +53,6 @@ export default async function NewBillPage({ searchParams }: { searchParams: Prom
         currencySymbol={settings.currencySymbol}
         open={open}
         employees={employees}
-        serviceProductIds={await productIdsNeedingService((openBill?.lines ?? []).flatMap((l) => (l.productId ? [l.productId] : [])))}
       />
     </div>
   );

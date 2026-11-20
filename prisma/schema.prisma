@@ -65,16 +65,6 @@ enum EnquiryStatus {
   VISITED
 }
 
-/// Why a number is on the Calls page.
-enum EnquiryKind {
-  /// A new customer enquiry (JustDial, WhatsApp, phone call).
-  LEAD
-  /// A customer who bought a product that needs servicing; due every few weeks.
-  SERVICE
-  /// The same customer's product is due for replacement.
-  REPLACE
-}
-
 enum CallResult {
   COMING
   CALL_BACK
@@ -144,8 +134,6 @@ model Category {
   name      String    @unique
   sortOrder Int       @default(0)
   createdAt DateTime  @default(now()) @db.Timestamptz(3)
-  /// Products here (e.g. wigs) bring the customer back for servicing and replacement; selling one adds them to Calls.
-  needsService Boolean @default(false)
   products  Product[]
 }
 
@@ -263,10 +251,8 @@ model Bill {
   createdBy   User            @relation("BillCreatedBy", fields: [createdById], references: [id])
   cancelledBy User?           @relation("BillCancelledBy", fields: [cancelledById], references: [id])
   editedBy    User?           @relation("BillEditedBy", fields: [editedById], references: [id])
-  /// Calls entries this bill closed (a lead and/or a servicing reminder for the same number).
+  /// Calls entries this bill closed (a lead for the same number).
   enquiries   Enquiry[]       @relation("EnquiryVisitedBill")
-  /// Servicing / replacement reminders started by this bill (it sold a product that needs servicing).
-  reminders   Enquiry[]       @relation("EnquirySourceBill")
   /// Who worked on the customer; optional.
   employees   Employee[]      @relation("BillEmployees")
 
@@ -540,8 +526,7 @@ model Expense {
 // ---------- Calls (new-customer enquiries) ----------
 
 /// A phone number the manager has to call: a JustDial/WhatsApp lead or someone who
-/// phoned the salon (LEAD), or a customer due for servicing / replacement of a product
-/// they bought (SERVICE / REPLACE). Closes as VISITED when a bill is made for the same number.
+/// phoned the shop. Closes as VISITED when a bill is made for the same number.
 model Enquiry {
   id            String        @id @default(cuid())
   /// Usually unknown until the first call.
@@ -558,12 +543,6 @@ model Enquiry {
   comingOn      DateTime?     @db.Timestamptz(3)
   visitedBillId String?
   visitedAt     DateTime?     @db.Timestamptz(3)
-  /// LEAD for new enquiries; SERVICE / REPLACE are added by the app when a product that needs servicing is sold.
-  kind          EnquiryKind   @default(LEAD)
-  /// SERVICE / REPLACE: the bill that sold the product; its date is the purchase date.
-  sourceBillId  String?
-  /// SERVICE: when this servicing round started (the purchase or the last servicing visit).
-  cycleStart    DateTime?     @db.Timestamptz(3)
   createdById   String
   createdAt     DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime      @updatedAt @db.Timestamptz(3)
@@ -571,11 +550,9 @@ model Enquiry {
   calls       EnquiryCall[]
   createdBy   User          @relation("EnquiryCreatedBy", fields: [createdById], references: [id])
   visitedBill Bill?         @relation("EnquiryVisitedBill", fields: [visitedBillId], references: [id], onDelete: SetNull)
-  sourceBill  Bill?         @relation("EnquirySourceBill", fields: [sourceBillId], references: [id], onDelete: SetNull)
 
   @@index([visitedBillId])
-  @@index([sourceBillId])
-  @@index([kind, phoneKey, status])
+  @@index([phoneKey, status])
   @@index([status, nextCallOn])
   @@index([status, comingOn])
   @@index([phoneKey])
