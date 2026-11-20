@@ -120,6 +120,15 @@ export const settingsSchema = z.object({
   currencyCode: trimmed(3).min(3, "Use a 3-letter code such as INR.").toUpperCase(),
   currencySymbol: trimmed(4).min(1, "Currency symbol is required."),
   lowStockThreshold: z.coerce.number().int().min(0).max(100000),
+  shopAddress: trimmed(300).default(""),
+  shopPhone: trimmed(30).default(""),
+  onlineShopUrl: z
+    .string()
+    .trim()
+    .max(200)
+    .default("")
+    .refine((v) => v === "" || /^https?:\/\/\S+\.\S+$/i.test(v), "Enter a full web address starting with https://")
+    .transform((v) => (v === "" ? null : v)),
 });
 
 export const categorySchema = z.object({
@@ -333,7 +342,7 @@ export const orderCloseSchema = z.object({
 
 // ---- Employees (owner-only) ----
 
-/** "2026-09-18" -> midnight that day in the salon's zone | null. Blank allowed. */
+/** "2026-09-18" -> midnight that day in the shop's zone | null. Blank allowed. */
 const optionalDateInput = z
   .string()
   .trim()
@@ -539,7 +548,7 @@ export type OwnerNamesInput = z.input<typeof ownerNamesSchema>;
 export const billUpdateSchema = billBase
   .extend({
   billId: z.string().min(1),
-  /** "2026-09-27T18:30" typed in the salon's local time. */
+  /** "2026-09-27T18:30" typed in the shop's local time. */
   billedAt: z
     .string()
     .trim()

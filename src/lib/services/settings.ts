@@ -7,13 +7,21 @@ export type BusinessSettingsData = {
   currencyCode: string;
   currencySymbol: string;
   lowStockThreshold: number;
+  /** Printed under the shop name on bills, one line per address line. */
+  shopAddress: string;
+  shopPhone: string;
+  /** Website or online shop shown on bills and in the WhatsApp message; null when the shop has none. */
+  onlineShopUrl: string | null;
 };
 
 const DEFAULTS: BusinessSettingsData = {
-  businessName: "Salon & Hair Studio",
+  businessName: "Tyre Shop",
   currencyCode: "INR",
   currencySymbol: "₹",
   lowStockThreshold: DEFAULT_LOW_STOCK_THRESHOLD,
+  shopAddress: "",
+  shopPhone: "",
+  onlineShopUrl: null,
 };
 
 /**
@@ -33,6 +41,9 @@ export const getSettings = cache(async (): Promise<BusinessSettingsData> => {
     currencyCode: row.currencyCode,
     currencySymbol: row.currencySymbol,
     lowStockThreshold: row.lowStockThreshold,
+    shopAddress: row.shopAddress,
+    shopPhone: row.shopPhone,
+    onlineShopUrl: row.onlineShopUrl,
   };
 });
 

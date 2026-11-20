@@ -79,12 +79,12 @@ describe("logging calls", () => {
     expect(callLogSchema.safeParse({ enquiryId: id, result: "COMING" }).success).toBe(false);
     expect(callLogSchema.safeParse({ enquiryId: id, result: "CALL_BACK" }).success).toBe(false);
 
-    const e = await logCall(callLogSchema.parse({ enquiryId: id, result: "COMING", date: day(2), name: "Priya", interest: "Hair colour", note: "Evening" }), manager);
+    const e = await logCall(callLogSchema.parse({ enquiryId: id, result: "COMING", date: day(2), name: "Priya", interest: "185/65 R15 tyres", note: "Evening" }), manager);
     expect(e.status).toBe("COMING");
     expect(toDateParam(new Date(e.comingOn!))).toBe(day(2));
     expect(e.nextCallOn).toBeNull();
     expect(e.name).toBe("Priya");
-    expect(e.interest).toBe("Hair colour");
+    expect(e.interest).toBe("185/65 R15 tyres");
     expect(e.calls).toHaveLength(1);
     expect(e.calls[0]).toMatchObject({ result: "COMING", note: "Evening", calledByName: "Test Manager" });
     expect(await prisma.auditLog.count({ where: { action: "ENQUIRY_CALL_LOGGED", entityId: id } })).toBe(1);
@@ -148,7 +148,7 @@ describe("lists", () => {
 
 describe("auto-close when the customer visits", () => {
   const bill = (phone: string | undefined, actor: SessionUser) =>
-    createBill(billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Haircut", quantity: 1, unitPrice: "300" }], customerName: "Priya S", customerPhone: phone }), actor);
+    createBill(billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Wheel alignment", quantity: 1, unitPrice: "300" }], customerName: "Priya S", customerPhone: phone }), actor);
 
   it("a bill with the same number marks the enquiry visited and links the bill", async () => {
     await add("9876543210");
@@ -196,10 +196,10 @@ describe("called customer shown on the bill screen", () => {
     await add("9876543210");
     const id = await idOf("9876543210");
     await logCall(callLogSchema.parse({ enquiryId: id, result: "NO_ANSWER" }), manager);
-    await logCall(callLogSchema.parse({ enquiryId: id, result: "COMING", date: day(1), name: "Priya", interest: "Hair patch", note: "After 5 pm" }), owner);
+    await logCall(callLogSchema.parse({ enquiryId: id, result: "COMING", date: day(1), name: "Priya", interest: "Alloy wheels", note: "After 5 pm" }), owner);
 
     const lead = await getCalledLead(phoneKey("+91 98765 43210")!);
-    expect(lead).toMatchObject({ name: "Priya", interest: "Hair patch", callCount: 2 });
+    expect(lead).toMatchObject({ name: "Priya", interest: "Alloy wheels", callCount: 2 });
     expect(lead!.lastCall).toMatchObject({ result: "COMING", calledByName: "Test Owner", note: "After 5 pm" });
     expect(toDateParam(new Date(lead!.lastCall!.followUpOn!))).toBe(day(1));
   });

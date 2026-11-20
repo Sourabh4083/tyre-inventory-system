@@ -62,7 +62,7 @@ export default async function BillDetailPage({ params, searchParams }: { params:
             Cancelled {bill.cancelledAt ? formatDateTime(bill.cancelledAt) : ""} by {bill.cancelledByName ?? "owner"}: {bill.cancelReason}. Product stock was restored.
           </p>
         ) : null}
-        <BillDetailActions bill={bill} role={user.role} currencySymbol={settings.currencySymbol} businessName={settings.businessName} shareExpiresAt={shareExpiresAt} />
+        <BillDetailActions bill={bill} role={user.role} currencySymbol={settings.currencySymbol} businessName={settings.businessName} onlineShopUrl={settings.onlineShopUrl} shareExpiresAt={shareExpiresAt} />
       </div>
 
       {showPayments ? (
@@ -74,7 +74,7 @@ export default async function BillDetailPage({ params, searchParams }: { params:
         />
       ) : null}
 
-      <BillReceipt bill={bill} businessName={settings.businessName} currencySymbol={settings.currencySymbol} />
+      <BillReceipt bill={bill} settings={settings} />
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Banknote, Check, Clock, CreditCard, Hourglass, LoaderCircle, Minus, Plus, Receipt, Scissors, Search, Smartphone, Split, Trash2, X } from "lucide-react";
+import { Banknote, Check, Clock, CreditCard, Hourglass, LoaderCircle, Minus, Plus, Receipt, Search, Wrench, Smartphone, Split, Trash2, X } from "lucide-react";
 import { lookupProductByCodeAction, quickSearchProductsAction } from "@/app/actions/products";
 import { createBillAction, discardOpenBillAction, saveOpenBillAction, updateBillAction } from "@/app/actions/billing";
 import type { ProductDTO } from "@/lib/services/products";
@@ -101,7 +101,7 @@ function writeDraft(draft: BillDraft | null) {
 export type BillEditInit = {
   billId: string;
   billNumber: string;
-  /** "2026-09-27T18:30" in the salon's local time. */
+  /** "2026-09-27T18:30" in the shop's local time. */
   billedAt: string;
   customerName: string;
   customerPhone: string;
@@ -447,7 +447,7 @@ export function BillComposer({
 
         <section className="rounded-2xl border bg-card p-4 shadow-xs sm:p-5">
           <h2 className="flex items-center gap-2 font-heading text-lg">
-            <Scissors className="size-4.5 text-primary" /> Services
+            <Wrench className="size-4.5 text-primary" /> Services
           </h2>
           {services.length ? (
             <ul className="mt-3 flex flex-wrap gap-2">
@@ -478,7 +478,7 @@ export function BillComposer({
                   value={customService.name}
                   onChange={(e) => setCustomService({ ...customService, name: e.target.value })}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomService())}
-                  placeholder="e.g. Hair wash"
+                  placeholder="e.g. Tube change"
                   maxLength={120}
                 />
               </Field>

@@ -107,11 +107,11 @@ describe("dashboard + settings", () => {
     expect(before.outOfStockCount).toBe(expectOut);
     expect(before.totalUnits).toBe(products.reduce((s, p) => s + p.quantity, 0));
 
-    await updateSettings({ businessName: "Test Salon", currencyCode: "INR", currencySymbol: "₹", lowStockThreshold: 10 }, owner.id);
+    await updateSettings({ businessName: "Test Tyres", currencyCode: "INR", currencySymbol: "₹", lowStockThreshold: 10, shopAddress: "", shopPhone: "", onlineShopUrl: null }, owner.id);
     const after = await getDashboardStats();
     expect(after.lowStockCount).toBe(products.filter((p) => p.quantity >= 1 && p.quantity <= 10).length);
     expect((await getProduct((await make("Threshold Probe", 8)).id))?.stockStatus).toBe("LOW_STOCK");
 
-    await updateSettings({ businessName: "Test Salon", currencyCode: "INR", currencySymbol: "₹", lowStockThreshold: 4 }, owner.id);
+    await updateSettings({ businessName: "Test Tyres", currencyCode: "INR", currencySymbol: "₹", lowStockThreshold: 4, shopAddress: "", shopPhone: "", onlineShopUrl: null }, owner.id);
   });
 });

@@ -214,7 +214,7 @@ export function EnquiryList({ enquiries, emptyText }: { enquiries: EnquiryDTO[];
       <AlertDialog open={visiting !== null} onOpenChange={(o) => !o && setVisiting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Did {visiting?.name ?? visiting?.phone} come to the salon?</AlertDialogTitle>
+            <AlertDialogTitle>Did {visiting?.name ?? visiting?.phone} come to the shop?</AlertDialogTitle>
             <AlertDialogDescription>
               They move to Closed as visited and drop off the call list. (When their bill has this mobile number, this happens by itself.)
             </AlertDialogDescription>
@@ -395,7 +395,7 @@ function LogCallForm({ enquiry, close }: { enquiry: EnquiryDTO; close: () => voi
           <Input id={`${id}-name`} className="h-11" value={name} onChange={(e) => setName(e.target.value)} placeholder="If they told you" maxLength={120} />
         </Field>
         <Field label="Asked about" htmlFor={`${id}-interest`} error={errors.interest}>
-          <Input id={`${id}-interest`} className="h-11" value={interest} onChange={(e) => setInterest(e.target.value)} placeholder="e.g. Hair colour, bridal" maxLength={200} />
+          <Input id={`${id}-interest`} className="h-11" value={interest} onChange={(e) => setInterest(e.target.value)} placeholder="e.g. 185/65 R15 car tyres" maxLength={200} />
         </Field>
       </div>
       <Field label="Note" htmlFor={`${id}-note`} error={errors.note}>

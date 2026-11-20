@@ -1,5 +1,5 @@
 /**
- * The salon runs in one place, so every date the staff sees is rendered in one
+ * The shop runs in one place, so every date the staff sees is rendered in one
  * fixed zone rather than in whatever zone the code happens to run in.
  *
  * This matters because the app renders dates on the server: `next dev` on a
@@ -30,7 +30,7 @@ const partsFormatter = new Intl.DateTimeFormat("en-CA", {
   hourCycle: "h23",
 });
 
-/** The wall clock an instant shows in the salon's zone. */
+/** The wall clock an instant shows in the shop's zone. */
 export function zonedParts(date: Date): ZonedParts {
   const out = {} as Record<string, number>;
   for (const { type, value } of partsFormatter.formatToParts(date)) {
@@ -39,7 +39,7 @@ export function zonedParts(date: Date): ZonedParts {
   return out as unknown as ZonedParts;
 }
 
-/** Offset of the salon's zone at this instant, in ms (zone time − UTC). */
+/** Offset of the shop's zone at this instant, in ms (zone time − UTC). */
 function offsetMs(date: Date): number {
   const p = zonedParts(date);
   const asUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
@@ -47,7 +47,7 @@ function offsetMs(date: Date): number {
 }
 
 /**
- * The instant at which the salon's zone reads the given wall clock — the
+ * The instant at which the shop's zone reads the given wall clock — the
  * counterpart of `new Date(y, m, d, ...)`, but pinned to APP_TIMEZONE.
  */
 export function zonedDate(year: number, month: number, day: number, hour = 0, minute = 0, second = 0, ms = 0): Date {
@@ -58,13 +58,13 @@ export function zonedDate(year: number, month: number, day: number, hour = 0, mi
   return new Date(wall - offsetMs(guess));
 }
 
-/** Midnight that starts this instant's day in the salon's zone. */
+/** Midnight that starts this instant's day in the shop's zone. */
 export function startOfDayInZone(date: Date): Date {
   const p = zonedParts(date);
   return zonedDate(p.year, p.month, p.day);
 }
 
-/** The last millisecond of this instant's day in the salon's zone. */
+/** The last millisecond of this instant's day in the shop's zone. */
 export function endOfDayInZone(date: Date): Date {
   const p = zonedParts(date);
   return zonedDate(p.year, p.month, p.day, 23, 59, 59, 999);
@@ -83,7 +83,7 @@ export function addMonthsInZone(date: Date, months: number): Date {
   return zonedDate(p.year, p.month + months, Math.min(p.day, lastDay));
 }
 
-/** "2026-09-08" for the instant's day in the salon's zone. */
+/** "2026-09-08" for the instant's day in the shop's zone. */
 export function toDateParamInZone(date: Date): string {
   const p = zonedParts(date);
   return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;

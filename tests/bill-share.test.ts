@@ -4,7 +4,8 @@ import { cancelBill, createBill, getOrCreateShareLink, getShareLinkExpiry, getSh
 import { buildBillWhatsappMessage } from "@/lib/bill-message";
 import { renderBillPdf } from "@/lib/bill-pdf";
 import { maskPhone } from "@/lib/phone";
-import { SHARE_LINK_DAYS, SHOP_ONLINE_URL } from "@/lib/constants";
+import { SHARE_LINK_DAYS } from "@/lib/constants";
+import type { BusinessSettingsData } from "@/lib/services/settings";
 import { billCreateSchema } from "@/lib/validation/schemas";
 import { seedBasics } from "./helpers";
 import type { SessionUser } from "@/lib/auth/session";
@@ -18,13 +19,13 @@ function makeBill(overrides: Record<string, unknown> = {}) {
   return createBill(
     billCreateSchema.parse({
       items: [
-        { kind: "SERVICE", name: "Haircut", quantity: 1, unitPrice: "300" },
-        { kind: "SERVICE", name: "Hair Spa", quantity: 1, unitPrice: "800" },
+        { kind: "SERVICE", name: "Wheel alignment", quantity: 1, unitPrice: "300" },
+        { kind: "SERVICE", name: "Wheel balancing", quantity: 1, unitPrice: "800" },
       ],
       customerName: "Priya",
       customerPhone: "98765 43210",
       paymentMethod: "UPI",
-      notes: "Prefers Sunday slots",
+      notes: "Front tyres rotated",
       ...overrides,
     }),
     manager,
@@ -102,35 +103,57 @@ describe("bill link sent on WhatsApp", () => {
 });
 
 describe("WhatsApp message", () => {
-  it("has the shop name, items, total, payment, bill link and online shop", async () => {
+  it("has the shop name, items, total, payment, bill link and website", async () => {
     const bill = await makeBill();
-    const msg = buildBillWhatsappMessage(bill, "https://example.test/b/abc", "Blue Heaven Wighub and Unisex Salon", "₹");
-    expect(msg).toContain("Hi Priya, thank you for visiting *Blue Heaven Wighub and Unisex Salon*!");
+    const msg = buildBillWhatsappMessage(bill, "https://example.test/b/abc", "Sharma Tyres & Wheel Care", "₹", "https://sharmatyres.example");
+    expect(msg).toContain("Hi Priya, thank you for visiting *Sharma Tyres & Wheel Care*!");
     expect(msg).toContain(`\n*Bill No:* ${bill.billNumber}`);
     // Emoji, and symbols phones draw as emoji (♥ ✔), turn into � boxes through wa.me.
     expect([...msg].filter((c) => c.codePointAt(0)! > 0xffff || "♥✔".includes(c))).toEqual([]);
-    expect(msg).toContain("• Hair Spa – ₹800");
+    expect(msg).toContain("• Wheel balancing – ₹800");
     expect(msg).toContain("*Total: ₹1,100* (Paid by UPI)");
     expect(msg).toContain("https://example.test/b/abc");
-    expect(msg).toContain(SHOP_ONLINE_URL);
+    expect(msg).toContain("https://sharmatyres.example");
     expect(msg).not.toContain("Balance due");
+  });
+
+  it("leaves out the website line when the shop has none", async () => {
+    const bill = await makeBill();
+    const msg = buildBillWhatsappMessage(bill, "https://example.test/b/abc", "Sharma Tyres", "₹", null);
+    expect(msg).not.toContain("Visit us online");
   });
 
   it("shows what is still owed on a pay-later bill", async () => {
     const bill = await makeBill({ paymentMethod: "CASH", payLater: true, paidNow: "500" });
-    const msg = buildBillWhatsappMessage(bill, "https://example.test/b/abc", "Blue Heaven", "₹");
+    const msg = buildBillWhatsappMessage(bill, "https://example.test/b/abc", "Sharma Tyres", "₹");
     expect(msg).toContain("*Total: ₹1,100*\n");
     expect(msg).toContain("*Balance due: ₹600*");
   });
 });
 
 describe("bill PDF", () => {
+  const settings: BusinessSettingsData = {
+    businessName: "Sharma Tyres & Wheel Care",
+    currencyCode: "INR",
+    currencySymbol: "₹",
+    lowStockThreshold: 4,
+    shopAddress: "Shop 4, Ring Road\nRaipur, Chhattisgarh",
+    shopPhone: "98765 00000",
+    onlineShopUrl: null,
+  };
+
   it("renders a PDF with the rupee sign", async () => {
     const bill = await makeBill();
     const shared = (await getSharedBill((await getOrCreateShareLink(bill.id, manager)).token))!;
-    const pdf = await renderBillPdf(shared, "Blue Heaven Wighub and Unisex Salon", "₹");
+    const pdf = await renderBillPdf(shared, settings);
     expect(Buffer.from(pdf.slice(0, 5)).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(1000);
+  });
+
+  it("renders without an address, phone or website", async () => {
+    const bill = await makeBill();
+    const pdf = await renderBillPdf(bill, { ...settings, shopAddress: "", shopPhone: "", onlineShopUrl: null });
+    expect(Buffer.from(pdf.slice(0, 5)).toString()).toBe("%PDF-");
   });
 });
 

@@ -2,7 +2,7 @@ import { addDaysInZone, endOfDayInZone, startOfDayInZone, toDateParamInZone, zon
 
 /**
  * Date-range helpers shared by the bills list and sales reports. Every boundary is
- * a day boundary in the salon's zone, not in the zone the server happens to run in
+ * a day boundary in the shop's zone, not in the zone the server happens to run in
  * — otherwise "Today" on a UTC host would mean 5:30 AM today to 5:29 AM tomorrow.
  */
 
@@ -16,7 +16,7 @@ export function endOfDay(d: Date) {
   return endOfDayInZone(d);
 }
 
-/** "2026-09-08" -> that day's midnight in the salon's zone; invalid input -> null */
+/** "2026-09-08" -> that day's midnight in the shop's zone; invalid input -> null */
 export function parseDateParam(value: string | undefined): Date | null {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const [y, m, d] = value.split("-").map(Number);
@@ -57,7 +57,7 @@ export function resolveRange(params: { range?: string; from?: string; to?: strin
 
 const MONTH_PARAM = /^(\d{4})-(0[1-9]|1[0-2])$/;
 
-/** "2026-09" for the month this instant falls in, in the salon's zone. */
+/** "2026-09" for the month this instant falls in, in the shop's zone. */
 export function toMonthParam(d: Date = new Date()) {
   return toDateParamInZone(d).slice(0, 7);
 }
@@ -66,7 +66,7 @@ export function isMonthParam(value: string | undefined | null): value is string 
   return Boolean(value && MONTH_PARAM.test(value));
 }
 
-/** First and last instant of a "YYYY-MM" month in the salon's zone. */
+/** First and last instant of a "YYYY-MM" month in the shop's zone. */
 export function monthRange(month: string): { from: Date; to: Date } {
   const m = MONTH_PARAM.exec(month);
   if (!m) throw new Error(`Invalid month "${month}"`);

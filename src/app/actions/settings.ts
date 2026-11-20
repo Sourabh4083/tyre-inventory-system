@@ -106,6 +106,9 @@ export async function updateSettingsAction(input: {
   currencyCode: string;
   currencySymbol: string;
   lowStockThreshold: number | string;
+  shopAddress: string;
+  shopPhone: string;
+  onlineShopUrl: string;
 }): Promise<ActionResult<BusinessSettingsData>> {
   try {
     const user = await requirePermission("settings.manage");

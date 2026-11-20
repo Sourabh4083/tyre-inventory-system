@@ -31,11 +31,11 @@ describe("stored times", () => {
     expect(setting?.setconfig).toContain("TimeZone=UTC");
   });
 
-  it("a bill made just after midnight in the salon is filed under that day", async () => {
+  it("a bill made just after midnight at the shop is filed under that day", async () => {
     // 12:30 AM IST on 10 Mar 2025 is still 9 Mar in UTC.
     const at = zonedDate(2025, 3, 10, 0, 30);
     const bill = await createBill(
-      billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Late Cut", quantity: 1, unitPrice: "250" }], paymentMethod: "CASH" }),
+      billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Late fitting", quantity: 1, unitPrice: "250" }], paymentMethod: "CASH" }),
       manager,
     );
     await prisma.bill.update({ where: { id: bill.id }, data: { createdAt: at } });

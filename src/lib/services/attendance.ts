@@ -79,7 +79,7 @@ function assertOwner(actor: SessionUser) {
   if (!can(actor.role, "employee.manage")) throw new AppError("Only the owner can decide whether a leave is paid.", "FORBIDDEN");
 }
 
-/** Monday of the week this day falls in (the salon's zone). */
+/** Monday of the week this day falls in (the shop's zone). */
 export function weekStart(day: Date): Date {
   const p = zonedParts(day);
   const dow = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay(); // 0 = Sunday

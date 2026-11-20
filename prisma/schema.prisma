@@ -1,4 +1,4 @@
-// Salon & Hair Inventory Management System - Prisma schema
+// Tyre Inventory & Billing System - Prisma schema
 
 generator client {
   provider = "prisma-client"
@@ -200,7 +200,7 @@ model StockMovement {
   @@index([purchaseOrderId])
 }
 
-/// A saved salon service (haircut, styling, ...) that can be added to a bill. No stock involved.
+/// A saved shop service (fitting, wheel alignment, balancing, ...) that can be added to a bill. No stock involved.
 model Service {
   id        String     @id @default(cuid())
   name      String     @unique
@@ -386,7 +386,12 @@ model PurchaseOrderItem {
 
 model BusinessSettings {
   id                String    @id @default("default")
-  businessName      String    @default("Salon & Hair Studio")
+  businessName      String    @default("Tyre Shop")
+  /// Printed under the shop name on bills; one line per address line.
+  shopAddress       String    @default("")
+  shopPhone         String    @default("")
+  /// Optional website or online shop, mentioned on bills and in the WhatsApp message.
+  onlineShopUrl     String?
   currencyCode      String    @default("INR")
   currencySymbol    String    @default("₹")
   lowStockThreshold Int       @default(4)
@@ -581,7 +586,7 @@ model EnquiryCall {
 model Attendance {
   id         String           @id @default(cuid())
   employeeId String
-  /// Midnight of the day in the salon's zone.
+  /// Midnight of the day in the shop's zone.
   date       DateTime         @db.Timestamptz(3)
   status     AttendanceStatus
   /// LEAVE only: the owner decides whether it is paid. null = not decided yet (cut until then).

@@ -32,7 +32,7 @@ describe("create bill", () => {
         items: [
           { kind: "PRODUCT", productId: glue.id, quantity: 2, unitPrice: "600" },
           { kind: "PRODUCT", productId: tape.id, quantity: 1, unitPrice: "150.50" },
-          { kind: "SERVICE", name: "Haircut", quantity: 1, unitPrice: "300" },
+          { kind: "SERVICE", name: "Wheel alignment", quantity: 1, unitPrice: "300" },
         ],
         customerName: "Ravi",
         customerPhone: "9876543210",
@@ -90,7 +90,7 @@ describe("create bill", () => {
     expect(billCreateSchema.safeParse({ items: [] }).success).toBe(false);
 
     await expect(
-      createBill(billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Wash", quantity: 1, unitPrice: "100" }], discount: "150" }), manager),
+      createBill(billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Puncture repair", quantity: 1, unitPrice: "100" }], discount: "150" }), manager),
     ).rejects.toThrow(/Discount cannot be more/);
   });
 
@@ -128,15 +128,15 @@ describe("cancel bill", () => {
   });
 
   it("manager cannot cancel a bill", async () => {
-    const bill = await createBill(billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Shave", quantity: 1, unitPrice: "100" }] }), manager);
+    const bill = await createBill(billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Tube change", quantity: 1, unitPrice: "100" }] }), manager);
     await expect(cancelBill({ billId: bill.id, reason: "Nope" }, manager)).rejects.toThrow(/owner/i);
   });
 });
 
 describe("services catalogue", () => {
   it("prevents duplicates and hides inactive services from the active list", async () => {
-    const s = await createService({ name: "Hair Spa", price: "900" }, owner);
-    await expect(createService({ name: "hair spa", price: "1" }, owner)).rejects.toThrow(/already exists/i);
+    const s = await createService({ name: "Wheel balancing", price: "900" }, owner);
+    await expect(createService({ name: "wheel balancing", price: "1" }, owner)).rejects.toThrow(/already exists/i);
     await updateService(s.id, { isActive: false }, owner);
     expect((await listServices({ activeOnly: true })).some((x) => x.id === s.id)).toBe(false);
     expect((await listServices()).some((x) => x.id === s.id)).toBe(true);
@@ -153,7 +153,7 @@ describe("sales report", () => {
       billCreateSchema.parse({
         items: [
           { kind: "PRODUCT", productId: p.id, quantity: 2, unitPrice: "500" },
-          { kind: "SERVICE", name: "Styling", quantity: 1, unitPrice: "1000" },
+          { kind: "SERVICE", name: "Nitrogen filling", quantity: 1, unitPrice: "1000" },
         ],
         discount: "100",
         paymentMethod: "CARD",
@@ -177,15 +177,15 @@ describe("sales report", () => {
     expect(report.grossProfit).toBe("350.00");
     expect(report.byPayment.find((b) => b.method === "CARD")?.amount).toBe("1900.00");
     expect(report.byDay).toHaveLength(1);
-    // Bucketed on the salon's calendar day, whatever zone the host runs in.
+    // Bucketed on the shop's calendar day, whatever zone the host runs in.
     expect(report.byDay[0].date).toBe(toDateParam(now));
     expect(report.topProducts[0]).toMatchObject({ name: "Report Serum", quantity: 2, amount: "1000.00" });
-    expect(report.topServices[0]).toMatchObject({ name: "Styling", quantity: 1, amount: "1000.00" });
+    expect(report.topServices[0]).toMatchObject({ name: "Nitrogen filling", quantity: 1, amount: "1000.00" });
   });
 });
 
 describe("customer mobile on a bill", () => {
-  const bill = (customerPhone?: string) => billCreateSchema.safeParse({ items: [{ kind: "SERVICE", name: "Haircut", quantity: 1, unitPrice: "300" }], customerPhone });
+  const bill = (customerPhone?: string) => billCreateSchema.safeParse({ items: [{ kind: "SERVICE", name: "Wheel alignment", quantity: 1, unitPrice: "300" }], customerPhone });
 
   it("is optional", () => {
     expect(bill().success).toBe(true);

@@ -95,7 +95,7 @@ export function EmployeeForm({ currencySymbol, employee }: { currencySymbol: str
         <h2 className="font-heading text-lg">Employment &amp; salary</h2>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Designation" htmlFor="designation" error={errors.designation} hint="e.g. Stylist, Helper, Receptionist">
-            <Input id="designation" className="h-11 text-base" placeholder="e.g. Stylist" {...register("designation")} />
+            <Input id="designation" className="h-11 text-base" placeholder="e.g. Fitter, Mechanic" {...register("designation")} />
           </Field>
           <Field label={`Monthly salary (${currencySymbol})`} htmlFor="monthlySalary" error={errors.monthlySalary} hint="Agreed salary. Actual payments are recorded on the employee page.">
             <Input id="monthlySalary" className="h-11 text-base" inputMode="decimal" placeholder="e.g. 15000" {...register("monthlySalary")} aria-invalid={Boolean(errors.monthlySalary)} />

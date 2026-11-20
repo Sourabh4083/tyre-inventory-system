@@ -9,9 +9,9 @@ const fraunces = Fraunces({ variable: "--font-heading", subsets: ["latin"], disp
 const geistMono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "Salon Inventory", template: "%s · Salon Inventory" },
-  description: "Inventory management for salon, hair system and wig products.",
-  applicationName: "Salon Inventory",
+  title: { default: "Tyre Inventory", template: "%s · Tyre Inventory" },
+  description: "Stock, billing and accounts for tyre dealers.",
+  applicationName: "Tyre Inventory",
 };
 
 /** Night mode is remembered per device in a cookie (set by ThemeToggle), so the server renders the right colours. */

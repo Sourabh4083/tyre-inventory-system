@@ -22,7 +22,7 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-// Pinned to the salon's zone: these run on the server, so the host's own zone
+// Pinned to the shop's zone: these run on the server, so the host's own zone
 // (UTC on Vercel) must not decide what the clock reads.
 const timeFormatter = new Intl.DateTimeFormat("en-IN", {
   timeZone: APP_TIMEZONE,
@@ -69,4 +69,12 @@ export function formatRelative(date: Date | string, now = new Date()) {
 
 export function signedQuantity(n: number) {
   return n > 0 ? `+${n}` : `${n}`;
+}
+
+/** The shop's address as separate lines, without blank ones. */
+export function addressLines(address: string): string[] {
+  return address
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
 }

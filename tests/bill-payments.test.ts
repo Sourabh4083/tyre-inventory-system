@@ -14,7 +14,7 @@ let otherManager: SessionUser;
 let categoryId: string;
 
 const customer = { customerName: "Priya", customerPhone: "9876543210" };
-const haircut = (price: string) => ({ kind: "SERVICE" as const, name: "Haircut", quantity: 1, unitPrice: price });
+const service = (price: string) => ({ kind: "SERVICE" as const, name: "Wheel alignment", quantity: 1, unitPrice: price });
 const pay = (billId: string, amount: string, method: "CASH" | "UPI" | "CARD" = "CASH") => billPaymentSchema.parse({ billId, amount, method });
 
 function localInput(d: Date) {
@@ -33,14 +33,14 @@ beforeAll(async () => {
 
 describe("making bills", () => {
   it("a normal bill is paid in full at the counter", async () => {
-    const bill = await createBill(billCreateSchema.parse({ items: [haircut("300")], paymentMethod: "UPI" }), manager);
+    const bill = await createBill(billCreateSchema.parse({ items: [service("300")], paymentMethod: "UPI" }), manager);
     expect(bill.balanceDue).toBe("0.00");
     expect(bill.amountPaid).toBe("300.00");
     expect(bill.payments).toEqual([expect.objectContaining({ amount: "300.00", method: "UPI", atBilling: true })]);
   });
 
   it("a pay-later bill needs the customer's name and phone", () => {
-    const res = billCreateSchema.safeParse({ items: [haircut("300")], payLater: true });
+    const res = billCreateSchema.safeParse({ items: [service("300")], payLater: true });
     expect(res.success).toBe(false);
     const paths = res.error!.issues.map((i) => i.path.join("."));
     expect(paths).toEqual(expect.arrayContaining(["customerName", "customerPhone"]));
@@ -49,7 +49,7 @@ describe("making bills", () => {
   it("pay later with a part paid now: stock goes out, the rest is due", async () => {
     const p = await createProduct(productCreateSchema.parse({ name: "Due Serum", categoryId, startingQuantity: 5, sellingPrice: "900" }), owner);
     const bill = await createBill(
-      billCreateSchema.parse({ ...customer, items: [{ kind: "PRODUCT", productId: p.id, quantity: 1, unitPrice: "900" }, haircut("300")], payLater: true, paidNow: "500", paymentMethod: "CASH" }),
+      billCreateSchema.parse({ ...customer, items: [{ kind: "PRODUCT", productId: p.id, quantity: 1, unitPrice: "900" }, service("300")], payLater: true, paidNow: "500", paymentMethod: "CASH" }),
       manager,
     );
     expect((await getProduct(p.id))?.quantity).toBe(4);
@@ -60,14 +60,14 @@ describe("making bills", () => {
   });
 
   it("pay later with nothing paid now has no counter payment", async () => {
-    const bill = await createBill(billCreateSchema.parse({ ...customer, items: [haircut("400")], payLater: true }), manager);
+    const bill = await createBill(billCreateSchema.parse({ ...customer, items: [service("400")], payLater: true }), manager);
     expect(bill.paymentMethod).toBeNull();
     expect(bill.payments).toEqual([]);
     expect(bill.balanceDue).toBe("400.00");
   });
 
   it("paid now can't be more than the total", async () => {
-    await expect(createBill(billCreateSchema.parse({ ...customer, items: [haircut("400")], payLater: true, paidNow: "500" }), manager)).rejects.toThrow(/more than the bill total/);
+    await expect(createBill(billCreateSchema.parse({ ...customer, items: [service("400")], payLater: true, paidNow: "500" }), manager)).rejects.toThrow(/more than the bill total/);
   });
 });
 
@@ -75,7 +75,7 @@ describe("split bills", () => {
   const methods = (bill: { payments: { amount: string; method: string; atBilling: boolean }[] }) => bill.payments.map((p) => [p.amount, p.method, p.atBilling]);
 
   it("half cash, half UPI: one counter payment per method and nothing due", async () => {
-    const bill = await createBill(billCreateSchema.parse({ items: [haircut("1000")], split: { CASH: "500", UPI: "500", CARD: "" } }), manager);
+    const bill = await createBill(billCreateSchema.parse({ items: [service("1000")], split: { CASH: "500", UPI: "500", CARD: "" } }), manager);
     expect(bill.balanceDue).toBe("0.00");
     expect(bill.amountPaid).toBe("1000.00");
     expect(bill.paymentMethod).toBeNull();
@@ -88,25 +88,25 @@ describe("split bills", () => {
   });
 
   it("a split with only one method filled is an ordinary bill", async () => {
-    const bill = await createBill(billCreateSchema.parse({ items: [haircut("300")], split: { CASH: "", UPI: "", CARD: "300" } }), manager);
+    const bill = await createBill(billCreateSchema.parse({ items: [service("300")], split: { CASH: "", UPI: "", CARD: "300" } }), manager);
     expect(bill.paymentMethod).toBe("CARD");
     expect(methods(bill)).toEqual([["300.00", "CARD", true]]);
   });
 
   it("the parts must add up to the total", async () => {
-    await expect(createBill(billCreateSchema.parse({ items: [haircut("1000")], split: { CASH: "500", UPI: "300", CARD: "" } }), manager)).rejects.toThrow(/200.00 is missing/);
-    await expect(createBill(billCreateSchema.parse({ items: [haircut("1000")], split: { CASH: "500", UPI: "600", CARD: "" } }), manager)).rejects.toThrow(/adds up to 1100.00/);
+    await expect(createBill(billCreateSchema.parse({ items: [service("1000")], split: { CASH: "500", UPI: "300", CARD: "" } }), manager)).rejects.toThrow(/200.00 is missing/);
+    await expect(createBill(billCreateSchema.parse({ items: [service("1000")], split: { CASH: "500", UPI: "600", CARD: "" } }), manager)).rejects.toThrow(/adds up to 1100.00/);
   });
 
   it("pay later with the part paid now split two ways", async () => {
-    const bill = await createBill(billCreateSchema.parse({ ...customer, items: [haircut("1000")], payLater: true, split: { CASH: "200", UPI: "", CARD: "300" } }), manager);
+    const bill = await createBill(billCreateSchema.parse({ ...customer, items: [service("1000")], payLater: true, split: { CASH: "200", UPI: "", CARD: "300" } }), manager);
     expect(bill.amountPaid).toBe("500.00");
     expect(bill.balanceDue).toBe("500.00");
     expect(methods(bill)).toEqual([
       ["200.00", "CASH", true],
       ["300.00", "CARD", true],
     ]);
-    await expect(createBill(billCreateSchema.parse({ ...customer, items: [haircut("1000")], payLater: true, split: { CASH: "600", UPI: "600", CARD: "" } }), manager)).rejects.toThrow(
+    await expect(createBill(billCreateSchema.parse({ ...customer, items: [service("1000")], payLater: true, split: { CASH: "600", UPI: "600", CARD: "" } }), manager)).rejects.toThrow(
       /more than the bill total/,
     );
   });
@@ -114,7 +114,7 @@ describe("split bills", () => {
   it("each part counts under its own method in the sales report", async () => {
     const range = { from: startOfDayInZone(new Date()), to: endOfDayInZone(new Date()) };
     const before = await getSalesReport(range);
-    await createBill(billCreateSchema.parse({ items: [haircut("900")], split: { CASH: "400", UPI: "500", CARD: "" } }), manager);
+    await createBill(billCreateSchema.parse({ items: [service("900")], split: { CASH: "400", UPI: "500", CARD: "" } }), manager);
     const after = await getSalesReport(range);
     const method = (r: typeof after, m: string) => Number(r.byPayment.find((x) => x.method === m)!.amount);
     expect(Number(after.revenue) - Number(before.revenue)).toBe(900);
@@ -124,8 +124,8 @@ describe("split bills", () => {
   });
 
   it("the owner can edit a bill into a split and back", async () => {
-    const bill = await createBill(billCreateSchema.parse({ items: [haircut("800")], paymentMethod: "CASH" }), manager);
-    const base = { billId: bill.id, billedAt: localInput(new Date(bill.createdAt)), items: [haircut("800")] };
+    const bill = await createBill(billCreateSchema.parse({ items: [service("800")], paymentMethod: "CASH" }), manager);
+    const base = { billId: bill.id, billedAt: localInput(new Date(bill.createdAt)), items: [service("800")] };
 
     const split = await updateBill(billUpdateSchema.parse({ ...base, split: { CASH: "300", UPI: "500", CARD: "" } }), owner);
     expect(split.balanceDue).toBe("0.00");
@@ -135,7 +135,7 @@ describe("split bills", () => {
       ["500.00", "UPI", true],
     ]);
 
-    await expect(updateBill(billUpdateSchema.parse({ ...base, items: [haircut("900")], split: { CASH: "300", UPI: "500", CARD: "" } }), owner)).rejects.toThrow(/100.00 is missing/);
+    await expect(updateBill(billUpdateSchema.parse({ ...base, items: [service("900")], split: { CASH: "300", UPI: "500", CARD: "" } }), owner)).rejects.toThrow(/100.00 is missing/);
 
     const single = await updateBill(billUpdateSchema.parse({ ...base, paymentMethod: "UPI" }), owner);
     expect(single.paymentMethod).toBe("UPI");
@@ -147,7 +147,7 @@ describe("collecting payments", () => {
   let billId = "";
 
   beforeAll(async () => {
-    billId = (await createBill(billCreateSchema.parse({ ...customer, items: [haircut("1000")], payLater: true, paidNow: "200", paymentMethod: "CASH" }), manager)).id;
+    billId = (await createBill(billCreateSchema.parse({ ...customer, items: [service("1000")], payLater: true, paidNow: "200", paymentMethod: "CASH" }), manager)).id;
   });
 
   it("owner and manager can collect", () => {
@@ -190,7 +190,7 @@ describe("collecting payments", () => {
 describe("unpaid list and reports", () => {
   it("lists unpaid bills oldest first and totals what is owed", async () => {
     const before = await getOutstanding();
-    const a = await createBill(billCreateSchema.parse({ ...customer, items: [haircut("250")], payLater: true }), manager);
+    const a = await createBill(billCreateSchema.parse({ ...customer, items: [service("250")], payLater: true }), manager);
     const list = await listBills({ unpaid: true, pageSize: 100 });
     expect(list.items.every((b) => Number(b.balanceDue) > 0 && b.status === "COMPLETED")).toBe(true);
     expect(list.items.at(-1)?.id).toBe(a.id);
@@ -204,7 +204,7 @@ describe("unpaid list and reports", () => {
   it("sales count on the bill date; payments count when received; the balance shows as still to collect", async () => {
     const range = { from: startOfDayInZone(new Date()), to: endOfDayInZone(new Date()) };
     const before = await getSalesReport(range);
-    const bill = await createBill(billCreateSchema.parse({ ...customer, items: [haircut("1000")], payLater: true, paidNow: "100", paymentMethod: "UPI" }), manager);
+    const bill = await createBill(billCreateSchema.parse({ ...customer, items: [service("1000")], payLater: true, paidNow: "100", paymentMethod: "UPI" }), manager);
     await addBillPayment(pay(bill.id, "400", "CASH"), manager);
     const after = await getSalesReport(range);
     const method = (r: typeof after, m: string) => Number(r.byPayment.find((x) => x.method === m)!.amount);
@@ -219,23 +219,23 @@ describe("unpaid list and reports", () => {
 
 describe("cancelling and editing", () => {
   it("a cancelled bill leaves the unpaid list and takes no more payments", async () => {
-    const bill = await createBill(billCreateSchema.parse({ ...customer, items: [haircut("600")], payLater: true, paidNow: "100" }), manager);
+    const bill = await createBill(billCreateSchema.parse({ ...customer, items: [service("600")], payLater: true, paidNow: "100" }), manager);
     await cancelBill({ billId: bill.id, reason: "Customer disputed" }, owner);
     expect((await listBills({ unpaid: true, pageSize: 100 })).items.map((b) => b.id)).not.toContain(bill.id);
     await expect(addBillPayment(pay(bill.id, "100"), manager)).rejects.toThrow(/cancelled/);
   });
 
   it("editing before anything is collected rewrites the counter payment from the form", async () => {
-    const bill = await createBill(billCreateSchema.parse({ items: [haircut("500")], paymentMethod: "CASH" }), manager);
+    const bill = await createBill(billCreateSchema.parse({ items: [service("500")], paymentMethod: "CASH" }), manager);
     const edited = await updateBill(
-      billUpdateSchema.parse({ billId: bill.id, billedAt: localInput(new Date(bill.createdAt)), ...customer, items: [haircut("800")], payLater: true, paidNow: "300", paymentMethod: "UPI" }),
+      billUpdateSchema.parse({ billId: bill.id, billedAt: localInput(new Date(bill.createdAt)), ...customer, items: [service("800")], payLater: true, paidNow: "300", paymentMethod: "UPI" }),
       owner,
     );
     expect(edited.balanceDue).toBe("500.00");
     expect(edited.payments).toEqual([expect.objectContaining({ amount: "300.00", method: "UPI", atBilling: true })]);
 
     const paidInFull = await updateBill(
-      billUpdateSchema.parse({ billId: bill.id, billedAt: localInput(new Date(bill.createdAt)), items: [haircut("800")], paymentMethod: "CARD" }),
+      billUpdateSchema.parse({ billId: bill.id, billedAt: localInput(new Date(bill.createdAt)), items: [service("800")], paymentMethod: "CARD" }),
       owner,
     );
     expect(paidInFull.balanceDue).toBe("0.00");
@@ -243,12 +243,12 @@ describe("cancelling and editing", () => {
   });
 
   it("after money is collected, edits keep the payments and can't drop the total below them", async () => {
-    const bill = await createBill(billCreateSchema.parse({ ...customer, items: [haircut("1000")], payLater: true, paidNow: "200" }), manager);
+    const bill = await createBill(billCreateSchema.parse({ ...customer, items: [service("1000")], payLater: true, paidNow: "200" }), manager);
     await addBillPayment(pay(bill.id, "300"), manager);
     const base = { billId: bill.id, billedAt: localInput(new Date(bill.createdAt)), ...customer, payLater: true, paidNow: "0" };
 
-    await expect(updateBill(billUpdateSchema.parse({ ...base, items: [haircut("400")] }), owner)).rejects.toThrow(/500.00 has already been received/);
-    const edited = await updateBill(billUpdateSchema.parse({ ...base, items: [haircut("900")] }), owner);
+    await expect(updateBill(billUpdateSchema.parse({ ...base, items: [service("400")] }), owner)).rejects.toThrow(/500.00 has already been received/);
+    const edited = await updateBill(billUpdateSchema.parse({ ...base, items: [service("900")] }), owner);
     expect(edited.balanceDue).toBe("400.00");
     expect(edited.amountPaid).toBe("500.00");
     expect(edited.payments).toHaveLength(2);

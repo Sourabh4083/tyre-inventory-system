@@ -39,20 +39,13 @@ export const MOVEMENT_FILTER_LABEL: Record<MovementType, string> = {
   SALE: "Sale / reduce stock",
 };
 
-export const SESSION_COOKIE = "salon_session";
+export const SESSION_COOKIE = "tyre_session";
 export const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 7; // 7 days
-
-/* ---------- Shop details printed on every bill ---------- */
-
-export const SHOP_ADDRESS_LINES = ["Station Road, Fafadih Chowk", "Above Mahaveer Thali", "Raipur, Chhattisgarh"] as const;
-export const SHOP_PHONE = "7224952390";
 
 /* ---------- Bill sent on WhatsApp ---------- */
 
 /** How long the bill link in the customer's WhatsApp message keeps working. */
 export const SHARE_LINK_DAYS = 10;
-/** The salon's online shop, mentioned in every bill message. */
-export const SHOP_ONLINE_URL = "https://blue-heaven-nine.vercel.app/";
 
 export const PAGE_SIZE = 25;
 /** Choices offered by the "Rows per page" picker under every paginated list. */

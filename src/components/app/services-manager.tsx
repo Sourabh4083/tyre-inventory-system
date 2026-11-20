@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Check, LoaderCircle, Pencil, Plus, Scissors, X } from "lucide-react";
+import { Check, LoaderCircle, Pencil, Plus, Wrench, X } from "lucide-react";
 import { createServiceAction, updateServiceAction } from "@/app/actions/billing";
 import type { ServiceDTO } from "@/lib/services/billing";
 import { formatMoney } from "@/lib/format";
@@ -60,7 +60,7 @@ export function ServicesManager({ services, currencySymbol }: { services: Servic
   return (
     <section className="rounded-2xl border bg-card p-5 shadow-xs sm:p-6">
       <h2 className="flex items-center gap-2 font-heading text-lg">
-        <Scissors className="size-4.5 text-primary" /> Salon services
+        <Wrench className="size-4.5 text-primary" /> Shop services
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">Services appear as one-tap buttons on the New Bill screen. Hidden services stay on old bills.</p>
 
@@ -95,12 +95,12 @@ export function ServicesManager({ services, currencySymbol }: { services: Servic
           )}
         </ul>
       ) : (
-        <p className="mt-4 rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">No services yet. Add haircut, styling, colouring and so on.</p>
+        <p className="mt-4 rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">No services yet. Add fitting, wheel alignment, balancing, puncture repair and so on.</p>
       )}
 
       <form onSubmit={add} className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-end" noValidate>
         <Field label="New service" htmlFor="service-name" error={errors.name} className="flex-1">
-          <Input id="service-name" className="h-11" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="e.g. Haircut" maxLength={120} aria-invalid={Boolean(errors.name)} />
+          <Input id="service-name" className="h-11" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="e.g. Wheel alignment" maxLength={120} aria-invalid={Boolean(errors.name)} />
         </Field>
         <Field label="Price" htmlFor="service-price" error={errors.price} className="sm:w-36">
           <Input id="service-price" className="h-11" inputMode="decimal" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} placeholder="300" aria-invalid={Boolean(errors.price)} />

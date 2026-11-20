@@ -1,15 +1,15 @@
 import type { BillDTO } from "@/lib/services/billing";
-import { SHARE_LINK_DAYS, SHOP_ONLINE_URL } from "@/lib/constants";
+import { SHARE_LINK_DAYS } from "@/lib/constants";
 import { formatDate, formatMoney } from "@/lib/format";
 import { paymentMethodsLabel } from "@/components/app/bill-badges";
 
 /**
  * The WhatsApp message sent to the customer with their bill: what they had, what they
- * paid (or still owe), the link to view/download the bill, and the salon's online shop.
+ * paid (or still owe), the link to view/download the bill, and the shop's website if it has one.
  * *text* is WhatsApp's bold. Only plain symbols (➜ ★ ₹ •): emoji, and symbols phones draw as
- * emoji such as ♥ ✔, came out as � boxes on the salon's tablet through a wa.me link.
+ * emoji such as ♥ ✔, came out as � boxes on a shop tablet through a wa.me link.
  */
-export function buildBillWhatsappMessage(bill: BillDTO, billUrl: string, businessName: string, currencySymbol: string): string {
+export function buildBillWhatsappMessage(bill: BillDTO, billUrl: string, businessName: string, currencySymbol: string, onlineShopUrl: string | null = null): string {
   const sym = currencySymbol;
   const due = Number(bill.balanceDue) > 0;
   const name = bill.customerName?.trim();
@@ -24,9 +24,7 @@ export function buildBillWhatsappMessage(bill: BillDTO, billUrl: string, busines
     "",
     `➜ View / download your bill (link works for ${SHARE_LINK_DAYS} days):`,
     billUrl,
-    "",
-    "★ Shop our products online:",
-    SHOP_ONLINE_URL,
+    ...(onlineShopUrl ? ["", "★ Visit us online:", onlineShopUrl] : []),
     "",
     "See you again soon!",
   ];

@@ -98,7 +98,7 @@ export async function recordStockIn(
 }
 
 /**
- * - REDUCE STOCK: stock that left without a bill (salon use, damage, expiry).
+ * - REDUCE STOCK: stock that left without a bill (shop use, damage, defect).
  * Writes MovementType.SALE with no billId; billing writes the same type WITH one,
  * which is how the history tells a real sale from a manual reduction.
  * The availability check happens inside the transaction on a locked row, so two

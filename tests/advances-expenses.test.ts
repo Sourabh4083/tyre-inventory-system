@@ -95,7 +95,7 @@ describe("advances", () => {
     expect(advanceSchema.safeParse({ employeeId, amount: "0" }).success).toBe(false);
   });
 
-  it("month boundaries follow the salon's zone", () => {
+  it("month boundaries follow the shop's zone", () => {
     const r = monthRange("2026-09");
     expect(r.from.toISOString()).toBe("2026-08-31T18:30:00.000Z");
     expect(r.to.toISOString()).toBe("2026-09-30T18:29:59.999Z");

@@ -54,7 +54,7 @@ beforeEach(async () => {
 
 const today = () => ({ from: startOfDay(new Date()), to: endOfDay(new Date()) });
 const expense = (amount: string, paymentMethod: Method, extra: Record<string, unknown> = {}) => createExpense(expenseSchema.parse({ amount, description: "Water", paymentMethod, ...extra }), owner);
-const serviceBill = (amount: string, extra: Record<string, unknown>) => createBill(billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Haircut", quantity: 1, unitPrice: amount }], ...extra }), manager);
+const serviceBill = (amount: string, extra: Record<string, unknown>) => createBill(billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Wheel alignment", quantity: 1, unitPrice: amount }], ...extra }), manager);
 const employee = () => createEmployee(employeeSchema.parse({ name: "Sunita", monthlySalary: "15000" }), owner);
 const product = (name: string, overrides: Record<string, unknown> = {}) => createProduct(productCreateSchema.parse({ name, categoryId, startingQuantity: 0, ...overrides }), owner);
 /** Entries are counted once they are typed in after the balance was set. */

@@ -15,7 +15,7 @@ beforeEach(async () => {
   owner = s.owner;
 });
 
-const bill = (customerName: string | undefined, customerPhone: string | undefined, service = "Haircut") =>
+const bill = (customerName: string | undefined, customerPhone: string | undefined, service = "Wheel alignment") =>
   createBill(billCreateSchema.parse({ items: [{ kind: "SERVICE", name: service, quantity: 1, unitPrice: "300" }], customerName, customerPhone }), manager);
 
 describe("remembering customers", () => {
@@ -53,9 +53,9 @@ describe("remembering customers", () => {
   });
 
   it("shows visits, last visit, money owed and recent bills newest first", async () => {
-    const first = await bill("Asha", "9000000001", "Haircut");
+    const first = await bill("Asha", "9000000001", "Wheel alignment");
     const second = await createBill(
-      billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Hair spa", quantity: 1, unitPrice: "800" }], customerName: "Asha", customerPhone: "90000 00001", payLater: true, paidNow: "300", paymentMethod: "CASH" }),
+      billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Wheel balancing", quantity: 1, unitPrice: "800" }], customerName: "Asha", customerPhone: "90000 00001", payLater: true, paidNow: "300", paymentMethod: "CASH" }),
       manager,
     );
 
@@ -63,7 +63,7 @@ describe("remembering customers", () => {
     expect(history.visits).toBe(2);
     expect(history.owes).toBe("500.00");
     expect(history.bills.map((b) => b.id)).toEqual([second.id, first.id]);
-    expect(history.bills[0].items).toEqual(["Hair spa"]);
+    expect(history.bills[0].items).toEqual(["Wheel balancing"]);
     expect(history.lastVisit).toBe(history.bills[0].createdAt);
   });
 

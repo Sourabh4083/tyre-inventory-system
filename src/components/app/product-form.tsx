@@ -121,7 +121,7 @@ export function ProductForm({
         <h2 className="font-heading text-lg">Basic information</h2>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Product name" htmlFor="name" required error={errors.name} className="sm:col-span-2">
-            <Input id="name" className="h-11 text-base" placeholder="e.g. Italian Glue" autoFocus={!editing} {...register("name", { required: "Product name is required." })} aria-invalid={Boolean(errors.name)} />
+            <Input id="name" className="h-11 text-base" placeholder="e.g. 185/65 R15 UX Royale TL" autoFocus={!editing} {...register("name", { required: "Product name is required." })} aria-invalid={Boolean(errors.name)} />
           </Field>
           <Field label="Category" htmlFor="categoryId" required error={errors.categoryId}>
             <NativeSelect id="categoryId" className="h-11" {...register("categoryId", { required: "Select a category." })} aria-invalid={Boolean(errors.categoryId)}>
@@ -164,7 +164,7 @@ export function ProductForm({
         <h2 className="font-heading text-lg">Identification</h2>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="SKU" htmlFor="sku" error={errors.sku} hint="Optional. Must be unique if entered.">
-            <Input id="sku" className="h-11 font-mono text-base" placeholder="e.g. GLU-ITL-01" autoCapitalize="characters" {...register("sku")} aria-invalid={Boolean(errors.sku)} />
+            <Input id="sku" className="h-11 font-mono text-base" placeholder="e.g. JK-1856515-UXR" autoCapitalize="characters" {...register("sku")} aria-invalid={Boolean(errors.sku)} />
           </Field>
           <Field label="Barcode" htmlFor="barcode" error={errors.barcode} hint="Optional. Scan with a USB scanner or type it in.">
             <Input id="barcode" className="h-11 font-mono text-base" inputMode="numeric" placeholder="e.g. 8901234567890" {...register("barcode")} aria-invalid={Boolean(errors.barcode)} />
@@ -198,7 +198,7 @@ export function ProductForm({
         <h2 className="font-heading text-lg">Details</h2>
         <div className="mt-4 grid grid-cols-1 gap-4">
           <Field label="Description" htmlFor="description" error={errors.description}>
-            <Textarea id="description" rows={3} placeholder="Size, length, colour, base type..." {...register("description")} />
+            <Textarea id="description" rows={3} placeholder="Size, pattern, ply rating, tubeless or tube type..." {...register("description")} />
           </Field>
           <Field label="Notes" htmlFor="notes" error={errors.notes}>
             <Textarea id="notes" rows={2} placeholder="Internal notes (supplier, reorder hints...)" {...register("notes")} />

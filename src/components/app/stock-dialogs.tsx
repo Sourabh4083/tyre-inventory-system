@@ -112,7 +112,7 @@ function ReduceStockForm({ product, close, onDone }: FormProps) {
             </p>
           </Field>
           <Field label="Note (optional)" htmlFor={`${id}-note`}>
-            <Input id={`${id}-note`} className="h-10" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. salon use, damaged, expired" maxLength={500} />
+            <Input id={`${id}-note`} className="h-10" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. shop use, damaged, defective" maxLength={500} />
           </Field>
         </>
       )}
@@ -130,7 +130,7 @@ export function ReduceStockDialog({ product, open, onOpenChange, onDone }: BaseP
             <PackageMinus className="size-5 text-primary" /> Reduce stock
           </DialogTitle>
           <DialogDescription>
-            Take stock out without a bill — salon use, damage or expiry. For a customer purchase, create a bill instead so the sale is counted.
+            Take stock out without a bill — shop use, damage or a defect. For a customer purchase, create a bill instead so the sale is counted.
           </DialogDescription>
         </DialogHeader>
         {product ? <ReduceStockForm key={product.id} product={product} close={() => onOpenChange(false)} onDone={onDone} /> : null}

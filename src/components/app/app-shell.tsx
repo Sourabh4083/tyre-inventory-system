@@ -1,4 +1,4 @@
-import { Scissors } from "lucide-react";
+import { Disc3 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth/session";
 import { SidebarNav } from "@/components/app/sidebar-nav";
 import { MobileNav } from "@/components/app/mobile-nav";
@@ -22,7 +22,7 @@ export function AppShell({
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex">
         <div className="flex items-center gap-3 px-5 py-5">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Scissors className="size-4" />
+            <Disc3 className="size-4" />
           </span>
           <div className="min-w-0">
             {/* Long shop names wrap onto a second line instead of being cut off. */}

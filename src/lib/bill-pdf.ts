@@ -3,8 +3,8 @@ import path from "node:path";
 import { PDFDocument, rgb, type PDFFont } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import type { BillDTO } from "@/lib/services/billing";
-import { SHOP_ADDRESS_LINES, SHOP_ONLINE_URL, SHOP_PHONE } from "@/lib/constants";
-import { formatDateTime, formatMoney } from "@/lib/format";
+import type { BusinessSettingsData } from "@/lib/services/settings";
+import { addressLines, formatDateTime, formatMoney } from "@/lib/format";
 import { PAYMENT_LABEL, amountsByMethod, paymentMethodsLabel } from "@/components/app/bill-badges";
 
 // Noto Sans has the ₹ sign, which the PDF standard fonts lack. Listed in next.config.ts
@@ -39,8 +39,8 @@ function wrap(text: string, font: PDFFont, size: number, maxWidth: number): stri
 }
 
 /** The same content as the on-screen receipt (BillReceipt), as a PDF file for the customer to keep. */
-export async function renderBillPdf(bill: BillDTO, businessName: string, currencySymbol: string): Promise<Uint8Array> {
-  const sym = currencySymbol;
+export async function renderBillPdf(bill: BillDTO, settings: BusinessSettingsData): Promise<Uint8Array> {
+  const { businessName, currencySymbol: sym } = settings;
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
   const [regularBytes, boldBytes] = await Promise.all([
@@ -56,8 +56,9 @@ export async function renderBillPdf(bill: BillDTO, businessName: string, currenc
   const inner = WIDTH - MARGIN * 2;
   const lines: Line[] = [];
   for (const t of wrap(businessName, bold, 15, inner)) lines.push({ kind: "text", text: t, size: 15, bold: true, align: "center" });
-  for (const a of SHOP_ADDRESS_LINES) lines.push({ kind: "text", text: a, size: 8.5, align: "center" });
-  lines.push({ kind: "text", text: `Phone: ${SHOP_PHONE}`, size: 8.5, bold: true, align: "center" }, { kind: "gap", size: 3 });
+  for (const a of addressLines(settings.shopAddress)) for (const t of wrap(a, regular, 8.5, inner)) lines.push({ kind: "text", text: t, size: 8.5, align: "center" });
+  if (settings.shopPhone) lines.push({ kind: "text", text: `Phone: ${settings.shopPhone}`, size: 8.5, bold: true, align: "center" });
+  lines.push({ kind: "gap", size: 3 });
   lines.push({ kind: "text", text: "BILL / RECEIPT", size: 8, muted: true, align: "center" }, { kind: "rule" });
   lines.push({ kind: "pair", left: "Bill no.", right: bill.billNumber, size: 9 });
   lines.push({ kind: "pair", left: "Date", right: formatDateTime(bill.createdAt), size: 9 });
@@ -87,9 +88,11 @@ export async function renderBillPdf(bill: BillDTO, businessName: string, currenc
   }
   lines.push({ kind: "rule" });
   lines.push({ kind: "text", text: "Thank you for visiting! Please come again.", size: 9, bold: true, align: "center" });
-  lines.push({ kind: "gap", size: 4 });
-  lines.push({ kind: "text", text: "Shop our products online:", size: 8, muted: true, align: "center" });
-  lines.push({ kind: "text", text: SHOP_ONLINE_URL, size: 8, align: "center" });
+  if (settings.onlineShopUrl) {
+    lines.push({ kind: "gap", size: 4 });
+    lines.push({ kind: "text", text: "Visit us online:", size: 8, muted: true, align: "center" });
+    for (const t of wrap(settings.onlineShopUrl, regular, 8, inner)) lines.push({ kind: "text", text: t, size: 8, align: "center" });
+  }
 
   const heightOf = (l: Line) => (l.kind === "rule" ? 12 : l.kind === "gap" ? l.size : l.size * 1.55);
   const height = MARGIN * 2 + lines.reduce((n, l) => n + heightOf(l), 0);

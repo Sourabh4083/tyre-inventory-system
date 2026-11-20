@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Edit Bill" };
 
-/** "2026-09-27T18:30" for a datetime-local input, in the salon's zone. */
+/** "2026-09-27T18:30" for a datetime-local input, in the shop's zone. */
 function toLocalInput(iso: string) {
   const p = zonedParts(new Date(iso));
   const pad = (n: number) => String(n).padStart(2, "0");

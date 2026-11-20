@@ -873,7 +873,7 @@ export async function getSalesReport(range: { from: Date; to: Date }): Promise<S
       where: { bill: where },
       select: { kind: true, productId: true, name: true, quantity: true, lineTotal: true, unitCost: true },
     }),
-    // Bucket by the salon's calendar day, not the host's: a bill rung up at 9 PM IST
+    // Bucket by the shop's calendar day, not the host's: a bill rung up at 9 PM IST
     // is 3:30 PM UTC, and grouping on the raw column would file it under the wrong day.
     prisma.$queryRaw<{ day: string; bills: bigint; amount: Prisma.Decimal | null }[]>`
       SELECT to_char(

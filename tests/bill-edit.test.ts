@@ -15,7 +15,7 @@ function productInput(overrides: Record<string, unknown>) {
   return productCreateSchema.parse({ name: "X", categoryId, startingQuantity: 0, ...overrides });
 }
 
-/** "2026-09-27T18:30" in the salon's zone for an instant. */
+/** "2026-09-27T18:30" in the shop's zone for an instant. */
 function localInput(d: Date) {
   const p = zonedParts(d);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -44,7 +44,7 @@ describe("owner edits a bill", () => {
         items: [
           { kind: "PRODUCT", productId: glueId, quantity: 2, unitPrice: "600" },
           { kind: "PRODUCT", productId: tapeId, quantity: 1, unitPrice: "100" },
-          { kind: "SERVICE", name: "Haircut", quantity: 1, unitPrice: "300" },
+          { kind: "SERVICE", name: "Wheel alignment", quantity: 1, unitPrice: "300" },
         ],
         paymentMethod: "CASH",
       }),
@@ -65,7 +65,7 @@ describe("owner edits a bill", () => {
           { kind: "PRODUCT", productId: glueId, quantity: 3, unitPrice: "550" }, // +1 sold, new price
           // tape removed: 1 back on the shelf
           { kind: "PRODUCT", productId: combId, quantity: 2, unitPrice: "50" }, // new line
-          { kind: "SERVICE", name: "Haircut", quantity: 1, unitPrice: "300" },
+          { kind: "SERVICE", name: "Wheel alignment", quantity: 1, unitPrice: "300" },
         ],
         discount: "100",
         paymentMethod: "UPI",
@@ -153,7 +153,7 @@ describe("owner edits a bill", () => {
         billUpdateSchema.parse({
           billId,
           billedAt: localInput(addDaysInZone(new Date(), 2)),
-          items: [{ kind: "SERVICE", name: "Haircut", quantity: 1, unitPrice: "300" }],
+          items: [{ kind: "SERVICE", name: "Wheel alignment", quantity: 1, unitPrice: "300" }],
         }),
         owner,
       ),

@@ -30,12 +30,14 @@ export function BillDetailActions({
   role,
   currencySymbol,
   businessName,
+  onlineShopUrl,
   shareExpiresAt,
 }: {
   bill: BillDTO;
   role: Role;
   currencySymbol: string;
   businessName: string;
+  onlineShopUrl: string | null;
   /** When the customer's bill link stops working; null when no link is active. */
   shareExpiresAt: string | null;
 }) {
@@ -58,7 +60,7 @@ export function BillDetailActions({
         toast.error(res.error);
         return;
       }
-      const text = buildBillWhatsappMessage(bill, res.data.url, businessName, currencySymbol);
+      const text = buildBillWhatsappMessage(bill, res.data.url, businessName, currencySymbol, onlineShopUrl);
       const url = `${whatsappLink(bill.customerPhone!)}?text=${encodeURIComponent(text)}`;
       if (win) win.location.href = url;
       // wa.me is outside the app (it opens WhatsApp), so the router can't take it.

@@ -7,6 +7,7 @@ import { updateSettingsAction } from "@/app/actions/settings";
 import type { BusinessSettingsData } from "@/lib/services/settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Field } from "@/components/app/field";
 
 export function SettingsForm({ settings }: { settings: BusinessSettingsData }) {
@@ -16,6 +17,9 @@ export function SettingsForm({ settings }: { settings: BusinessSettingsData }) {
     currencyCode: settings.currencyCode,
     currencySymbol: settings.currencySymbol,
     lowStockThreshold: String(settings.lowStockThreshold),
+    shopAddress: settings.shopAddress,
+    shopPhone: settings.shopPhone,
+    onlineShopUrl: settings.onlineShopUrl ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -44,6 +48,17 @@ export function SettingsForm({ settings }: { settings: BusinessSettingsData }) {
         <Field label="Business name" htmlFor="businessName" required error={errors.businessName}>
           <Input id="businessName" className="h-11" value={values.businessName} onChange={(e) => setValues({ ...values, businessName: e.target.value })} aria-invalid={Boolean(errors.businessName)} />
         </Field>
+        <Field label="Shop address" htmlFor="shopAddress" error={errors.shopAddress} hint="Printed on every bill. One line per address line.">
+          <Textarea id="shopAddress" rows={3} value={values.shopAddress} onChange={(e) => setValues({ ...values, shopAddress: e.target.value })} maxLength={300} placeholder={"Shop no. 4, Main Road\nCity, State"} aria-invalid={Boolean(errors.shopAddress)} />
+        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Shop phone" htmlFor="shopPhone" error={errors.shopPhone} hint="Printed on bills.">
+            <Input id="shopPhone" className="h-11" inputMode="tel" maxLength={30} value={values.shopPhone} onChange={(e) => setValues({ ...values, shopPhone: e.target.value })} aria-invalid={Boolean(errors.shopPhone)} />
+          </Field>
+          <Field label="Website (optional)" htmlFor="onlineShopUrl" error={errors.onlineShopUrl} hint="Shown on bills and in the WhatsApp message.">
+            <Input id="onlineShopUrl" className="h-11" inputMode="url" maxLength={200} placeholder="https://" value={values.onlineShopUrl} onChange={(e) => setValues({ ...values, onlineShopUrl: e.target.value })} aria-invalid={Boolean(errors.onlineShopUrl)} />
+          </Field>
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Currency code" htmlFor="currencyCode" required error={errors.currencyCode} hint="e.g. INR">
             <Input id="currencyCode" className="h-11 uppercase" maxLength={3} value={values.currencyCode} onChange={(e) => setValues({ ...values, currencyCode: e.target.value.toUpperCase() })} aria-invalid={Boolean(errors.currencyCode)} />

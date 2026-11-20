@@ -106,7 +106,7 @@ describe("profit report", () => {
         items: [
           { kind: "PRODUCT", productId: serum.id, quantity: 2, unitPrice: "500" },
           { kind: "PRODUCT", productId: clip.id, quantity: 3, unitPrice: "50" },
-          { kind: "SERVICE", name: "Haircut", quantity: 1, unitPrice: "850" },
+          { kind: "SERVICE", name: "Wheel alignment", quantity: 1, unitPrice: "850" },
         ],
         paymentMethod: "CASH",
       }),
@@ -114,7 +114,7 @@ describe("profit report", () => {
     );
     // A pay-later bill is a sale, but no money has come in yet.
     await createBill(
-      billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Styling", quantity: 1, unitPrice: "1000" }], customerName: "Ravi", customerPhone: "9876543210", payLater: true }),
+      billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Nitrogen filling", quantity: 1, unitPrice: "1000" }], customerName: "Ravi", customerPhone: "9876543210", payLater: true }),
       manager,
     );
     await createExpense(expenseSchema.parse({ amount: "120", description: "Tea" }), manager);
@@ -160,7 +160,7 @@ describe("stock value on the dashboard", () => {
 
 describe("money the owners take", () => {
   it("does not change sales, money spent or profit", async () => {
-    await createBill(billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Haircut", quantity: 1, unitPrice: "800" }] }), manager);
+    await createBill(billCreateSchema.parse({ items: [{ kind: "SERVICE", name: "Wheel alignment", quantity: 1, unitPrice: "800" }] }), manager);
     const range = { from: startOfDay(new Date()), to: endOfDay(new Date()) };
     const before = await getProfitReport(range);
 

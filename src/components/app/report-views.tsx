@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Ban, Banknote, HandCoins, Landmark, Package, Scissors, Truck, Users, Wallet } from "lucide-react";
+import { ArrowRight, Ban, Banknote, HandCoins, Landmark, Package, Truck, Wrench, Users, Wallet } from "lucide-react";
 import type { ProfitReport } from "@/lib/services/profit";
 import type { AccountMovement, Balances, MoneyEntry, MoneyMovement, OwnerWithdrawals } from "@/lib/services/cashbook";
 import { MoneyBalanceForm } from "@/components/app/money-balance-form";
@@ -51,7 +51,7 @@ export function SalesView({ p, sym, billsHref }: { p: ProfitReport; sym: string;
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl border bg-card p-4 shadow-xs sm:p-5">
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Scissors className="size-4" /> Services
+            <Wrench className="size-4" /> Services
           </p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">{money(report.serviceRevenue)}</p>
         </div>
@@ -149,7 +149,7 @@ export function SalesView({ p, sym, billsHref }: { p: ProfitReport; sym: string;
           rows={report.topProducts.map((x) => ({ key: x.productId ?? x.name, name: x.name, quantity: x.quantity, amount: money(x.amount), href: x.productId ? `/inventory/${x.productId}` : undefined }))}
           empty="No products sold in this period."
         />
-        <TopList title="Services done" icon={Scissors} rows={report.topServices.map((s) => ({ key: s.name, name: s.name, quantity: s.quantity, amount: money(s.amount) }))} empty="No services billed in this period." />
+        <TopList title="Services done" icon={Wrench} rows={report.topServices.map((s) => ({ key: s.name, name: s.name, quantity: s.quantity, amount: money(s.amount) }))} empty="No services billed in this period." />
       </div>
     </div>
   );

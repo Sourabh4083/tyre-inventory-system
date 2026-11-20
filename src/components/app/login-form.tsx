@@ -22,7 +22,7 @@ export function LoginForm({ next }: { next?: string }) {
           type="email"
           autoComplete="email"
           inputMode="email"
-          placeholder="you@salon.local"
+          placeholder="you@tyreshop.local"
           required
           className="h-11 text-base"
           aria-invalid={Boolean(state?.fieldErrors?.email)}

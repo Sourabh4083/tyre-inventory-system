@@ -11,7 +11,7 @@ import { PrismaClient } from "../../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 const BASE = process.env.APP_URL ?? "http://localhost:3000";
-const COOKIE = "salon_session";
+const COOKIE = "tyre_session";
 
 async function tokenFor(userId: string, role: "OWNER" | "MANAGER") {
   return new SignJWT({ sub: userId, role })
@@ -34,8 +34,8 @@ beforeAll(async () => {
   const health = await fetch(`${BASE}/login`, { redirect: "manual" }).catch(() => null);
   if (!health) throw new Error(`Server not reachable at ${BASE}. Start it with "npm run dev" first.`);
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }) });
-  const owner = await prisma.user.findUniqueOrThrow({ where: { email: "owner@salon.local" } });
-  const manager = await prisma.user.findUniqueOrThrow({ where: { email: "manager@salon.local" } });
+  const owner = await prisma.user.findUniqueOrThrow({ where: { email: "owner@tyreshop.local" } });
+  const manager = await prisma.user.findUniqueOrThrow({ where: { email: "manager@tyreshop.local" } });
   await prisma.$disconnect();
   managerUserId = manager.id;
   ownerToken = await tokenFor(owner.id, "OWNER");

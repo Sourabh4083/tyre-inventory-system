@@ -4,7 +4,7 @@ import { formatDate, formatDateTime, formatMoney, formatRelative } from "@/lib/f
 import { resolveRange, toDateParam } from "@/lib/dates";
 import { zonedDate } from "@/lib/timezone";
 
-/** A wall clock in the salon's zone, whatever zone the test host is in. */
+/** A wall clock in the shop's zone, whatever zone the test host is in. */
 const ist = (y: number, mo: number, d: number, h = 0, mi = 0) => zonedDate(y, mo, d, h, mi);
 
 describe("stock status rule (threshold 4)", () => {
@@ -42,7 +42,7 @@ describe("formatting", () => {
   });
 
   it("formats relative dates", () => {
-    // Built in the salon's zone, not the host's, so these hold on a UTC CI box too.
+    // Built in the shop's zone, not the host's, so these hold on a UTC CI box too.
     const now = ist(2026, 9, 8, 12, 0);
     expect(formatRelative(ist(2026, 9, 7, 9, 0), now)).toBe("Yesterday");
     expect(formatRelative(ist(2026, 9, 8, 10, 35), now)).toMatch(/10:35/i);
@@ -50,7 +50,7 @@ describe("formatting", () => {
   });
 });
 
-describe("timestamps render in the salon's zone, not the host's", () => {
+describe("timestamps render in the shop's zone, not the host's", () => {
   // 2026-09-22T00:45:32Z is 06:15 in Kolkata: the case that showed 12:45 AM on Vercel.
   const earlyMorningIST = new Date("2026-09-22T00:45:32.190Z");
 

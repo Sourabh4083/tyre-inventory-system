@@ -14,7 +14,7 @@ let ritu: string;
 let aman: string;
 let serumId: string;
 
-const haircut = { kind: "SERVICE" as const, name: "Haircut", quantity: 1, unitPrice: "300" };
+const service = { kind: "SERVICE" as const, name: "Wheel alignment", quantity: 1, unitPrice: "300" };
 const serum = (quantity = 1) => ({ kind: "PRODUCT" as const, productId: serumId, name: "Open Serum", quantity, unitPrice: "900" });
 
 beforeAll(async () => {
@@ -29,10 +29,10 @@ beforeAll(async () => {
 
 describe("open bills", () => {
   it("needs the employee handling the customer, not the customer's name", () => {
-    const res = openBillSchema.safeParse({ employeeIds: [], items: [haircut] });
+    const res = openBillSchema.safeParse({ employeeIds: [], items: [service] });
     expect(res.success).toBe(false);
     expect(res.error!.issues.map((i) => i.path.join("."))).toEqual(["employeeIds"]);
-    expect(openBillSchema.safeParse({ employeeIds: [ritu], items: [haircut] }).success).toBe(true);
+    expect(openBillSchema.safeParse({ employeeIds: [ritu], items: [service] }).success).toBe(true);
   });
 
   it("is kept open without touching stock, then added to", async () => {
@@ -42,7 +42,7 @@ describe("open bills", () => {
     expect(opened.total).toBe("900.00");
     expect((await getProduct(serumId))?.quantity).toBe(5);
 
-    const added = await saveOpenBill(openBillSchema.parse({ id: opened.id, employeeIds: [ritu], items: [serum(2), haircut] }), owner);
+    const added = await saveOpenBill(openBillSchema.parse({ id: opened.id, employeeIds: [ritu], items: [serum(2), service] }), owner);
     expect(added.id).toBe(opened.id);
     expect(added.total).toBe("2100.00");
     expect(added.itemCount).toBe(3);
@@ -58,7 +58,7 @@ describe("open bills", () => {
     const [open] = await listOpenBills();
     const input = billCreateSchema.parse({
       openBillId: open.id,
-      items: [{ kind: "PRODUCT", productId: serumId, quantity: 2, unitPrice: "900" }, haircut],
+      items: [{ kind: "PRODUCT", productId: serumId, quantity: 2, unitPrice: "900" }, service],
       paymentMethod: "CASH",
     });
     const bill = await createBill(input, manager);
@@ -95,13 +95,13 @@ describe("open bills", () => {
   it("only offers employees who are working", async () => {
     await prisma.employee.update({ where: { id: aman }, data: { isActive: false } });
     expect((await listBillingEmployees()).map((e) => e.name)).toEqual(["Ritu"]);
-    await expect(saveOpenBill(openBillSchema.parse({ employeeIds: [aman], items: [haircut] }), manager)).rejects.toThrow(/currently working/);
+    await expect(saveOpenBill(openBillSchema.parse({ employeeIds: [aman], items: [service] }), manager)).rejects.toThrow(/currently working/);
   });
 
   it("drops a product that was archived while the bill was open", async () => {
-    const open = await saveOpenBill(openBillSchema.parse({ employeeIds: [ritu], items: [serum(1), haircut] }), manager);
+    const open = await saveOpenBill(openBillSchema.parse({ employeeIds: [ritu], items: [serum(1), service] }), manager);
     await prisma.product.update({ where: { id: serumId }, data: { status: "ARCHIVED" } });
-    expect((await getOpenBill(open.id))?.lines.map((l) => l.name)).toEqual(["Haircut"]);
+    expect((await getOpenBill(open.id))?.lines.map((l) => l.name)).toEqual(["Wheel alignment"]);
   });
 });
 
@@ -115,35 +115,35 @@ describe("employees on a bill", () => {
   });
 
   it("an open bill can be handled by several employees, and completing it keeps them on the bill", async () => {
-    const open = await saveOpenBill(openBillSchema.parse({ employeeIds: [ravi, neha, ravi], items: [haircut] }), manager);
+    const open = await saveOpenBill(openBillSchema.parse({ employeeIds: [ravi, neha, ravi], items: [service] }), manager);
     expect(open.employeeNames).toEqual(["Neha", "Ravi"]);
 
     // An employee deactivated while the customer is in the shop stays on their open bill.
     await prisma.employee.update({ where: { id: ravi }, data: { isActive: false } });
     expect((await listBillingEmployees(open.employeeIds)).map((e) => e.name)).toContain("Ravi");
-    const bill = await createBill(billCreateSchema.parse({ openBillId: open.id, employeeIds: open.employeeIds, items: [haircut] }), manager);
+    const bill = await createBill(billCreateSchema.parse({ openBillId: open.id, employeeIds: open.employeeIds, items: [service] }), manager);
     expect(bill.employeeNames).toEqual(["Neha", "Ravi"]);
     await prisma.employee.update({ where: { id: ravi }, data: { isActive: true } });
   });
 
   it("is optional when completing a bill", async () => {
-    const bill = await createBill(billCreateSchema.parse({ items: [haircut] }), manager);
+    const bill = await createBill(billCreateSchema.parse({ items: [service] }), manager);
     expect(bill.employeeNames).toEqual([]);
   });
 
   it("rejects an unknown or deactivated employee on a new bill", async () => {
-    await expect(createBill(billCreateSchema.parse({ employeeIds: ["nope"], items: [haircut] }), manager)).rejects.toThrow(/currently working/);
-    await expect(createBill(billCreateSchema.parse({ employeeIds: [aman], items: [haircut] }), manager)).rejects.toThrow(/currently working/);
+    await expect(createBill(billCreateSchema.parse({ employeeIds: ["nope"], items: [service] }), manager)).rejects.toThrow(/currently working/);
+    await expect(createBill(billCreateSchema.parse({ employeeIds: [aman], items: [service] }), manager)).rejects.toThrow(/currently working/);
   });
 
   it("the owner can change who handled a bill", async () => {
-    const bill = await createBill(billCreateSchema.parse({ employeeIds: [neha], items: [haircut] }), manager);
+    const bill = await createBill(billCreateSchema.parse({ employeeIds: [neha], items: [service] }), manager);
     const edited = await updateBill(
-      billUpdateSchema.parse({ billId: bill.id, billedAt: "2026-01-05T10:00", employeeIds: [neha, ravi], items: [haircut] }),
+      billUpdateSchema.parse({ billId: bill.id, billedAt: "2026-01-05T10:00", employeeIds: [neha, ravi], items: [service] }),
       owner,
     );
     expect(edited.employeeNames).toEqual(["Neha", "Ravi"]);
-    const cleared = await updateBill(billUpdateSchema.parse({ billId: bill.id, billedAt: "2026-01-05T10:00", items: [haircut] }), owner);
+    const cleared = await updateBill(billUpdateSchema.parse({ billId: bill.id, billedAt: "2026-01-05T10:00", items: [service] }), owner);
     expect(cleared.employeeNames).toEqual([]);
   });
 });

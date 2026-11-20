@@ -1,7 +1,10 @@
-# Salon Inventory & Billing
+# Tyre Inventory & Billing
 
-A web application for running the back office of a salon, hair-replacement and wig shop: stock, customer
-billing, purchase orders, staff, expenses and sales reports, for two roles (Owner and Manager).
+A web application for running the back office of a tyre dealer: tyre and tube stock, customer billing,
+purchase orders, staff, expenses and sales reports, for two roles (Owner and Manager).
+
+Built from the salon inventory app as a starting point. Tyre-specific features (tyre details and search
+by size, company price lists, GST invoices) are being added; see the [Roadmap](#roadmap).
 
 It is built for daily use at the counter on a phone, tablet or PC. Every stock change is recorded in a
 ledger, money is handled in integer paise, and all permissions are enforced on the server.
@@ -44,8 +47,8 @@ ledger, money is handled in integer paise, and all permissions are enforced on t
 - **Low Stock** and **Out of Stock** screens, driven by a shop-wide threshold with an optional per-product
   override.
 - **Barcode**: USB scanners (type and Enter), search by code, and phone-camera scanning at `/scan`.
-- **Categories** are managed by the owner in Settings. A category can be marked **Needs servicing**, which
-  starts servicing reminders on the Calls page when its products are sold.
+- **Categories** are managed by the owner in Settings (car & jeep, two-wheeler, truck & bus, tractor,
+  tubes & flaps, ...).
 - **Purchase orders** (`ORD-000001`): add products to an order (new products can be created while
   ordering), mark lines received as deliveries arrive (stock goes up on receipt), and the order stays
   active until everything is received or the owner closes it. Each order has a payment method and can
@@ -57,7 +60,7 @@ ledger, money is handled in integer paise, and all permissions are enforced on t
 
 ### Billing
 
-- **New Bill**: scan or search products, tap saved salon services or add a one-off service, set quantity
+- **New Bill**: scan or search products, tap saved shop services (fitting, alignment, balancing, ...) or add a one-off service, set quantity
   and price per line, discount, and payment by Cash, UPI or Card. Completing a bill saves it as
   `BILL-000001` and reduces stock in the same transaction. Prices are copied onto the bill, so later
   catalogue changes never alter old bills.
@@ -81,7 +84,7 @@ ledger, money is handled in integer paise, and all permissions are enforced on t
 - **WhatsApp**: a button opens WhatsApp (`wa.me`) with a message for the customer that includes a secret
   bill link (`/b/<code>`). The link works for 10 days without a login and lets the customer view the bill
   and download it as a PDF. The owner can turn a link off.
-- **Owner only**: edit a completed bill (stock, reports, profit and servicing reminders follow), cancel
+- **Owner only**: edit a completed bill (stock, reports and profit follow), cancel
   a bill (stock is put back), remove a payment, manage the services catalogue.
 
 ### Shop operations
@@ -92,10 +95,6 @@ ledger, money is handled in integer paise, and all permissions are enforced on t
   the result (Coming, Call back, No answer, Not interested) with a follow-up date and note. Numbers are
   sorted into To call today, Coming, Call later and Closed. A lead closes automatically as Visited when a
   bill is made for the same number.
-- **Wig servicing reminders**: selling a product from a Needs servicing category adds a card to Calls,
-  due 25 days later. A later bill from the same number (15 or more days on) counts as the servicing
-  visit and starts the next 25 days. Seven months after purchase the same card becomes a replacement
-  reminder. Editing or cancelling a bill updates its reminders.
 - **Employees**: staff records, masked Aadhaar number, document uploads (JPG, PNG, WebP or PDF up to
   4 MB, stored in PostgreSQL), monthly salary, salary payment log and cash advances.
 - **Attendance**: Present, Absent, Half day, Holiday and Leave per day, a Mark all present button, and a
@@ -202,11 +201,10 @@ src/app/actions/*               transactions, audit)
 prisma/
   schema.prisma            Data model
   migrations/              SQL migrations, including the number sequences
-  seed.ts                  Demo users, categories, settings and inventory import
+  seed.ts                  Demo users, settings, tyre categories, services and sample tyres
 scripts/
   db-start.ts              Starts the embedded PostgreSQL server for development
 data/
-  Hair accesories.xlsx     Optional stock sheet imported by the seed
   db/                      Embedded PostgreSQL data (git-ignored)
 src/
   proxy.ts                 Route protection
@@ -228,7 +226,7 @@ src/
     permissions.ts         Role to permission matrix
     stock-status.ts        IN_STOCK / LOW_STOCK / OUT_OF_STOCK rule
     money.ts               Paise arithmetic
-    timezone.ts            Salon timezone helpers (Asia/Kolkata)
+    timezone.ts            Shop timezone helpers (Asia/Kolkata)
   generated/prisma/        Generated Prisma client
 tests/                     Vitest suites; tests/http runs against a live server
 ```
@@ -249,7 +247,7 @@ cp .env.example .env        # the defaults point at the embedded database
 npm run db:start            # terminal 1: PostgreSQL on 127.0.0.1:5434, keep it running
 
 npm run db:deploy           # terminal 2: apply migrations
-npm run db:seed             # demo accounts, categories, inventory
+npm run db:seed             # demo accounts, categories, services, sample tyres
 npm run dev                 # http://localhost:3000
 ```
 
@@ -257,15 +255,16 @@ npm run dev                 # http://localhost:3000
 
 | Role | Email | Password |
 | --- | --- | --- |
-| Owner | `owner@salon.local` | `Owner@Salon2026!` |
-| Manager | `manager@salon.local` | `Manager@Salon2026!` |
+| Owner | `owner@tyreshop.local` | `Owner@Tyre2026!` |
+| Manager | `manager@tyreshop.local` | `Manager@Tyre2026!` |
 
 Set `SEED_OWNER_PASSWORD` and `SEED_MANAGER_PASSWORD` before seeding to use different passwords. Change
 them before any real deployment.
 
-The seed is idempotent. It creates the two accounts, 13 product categories, business settings (INR,
-low-stock threshold 4) and the shop inventory, imported from `data/Hair accesories.xlsx` when that file
-exists and from a built-in list otherwise.
+The seed is idempotent. It creates the two accounts, business settings (INR, low-stock threshold 4),
+8 tyre categories, 6 common services (fitting, alignment, balancing, puncture repair, nitrogen, tube
+change) and 14 sample tyres priced from the JK Tyre dealer price list. Set the shop name, address and
+phone under Settings after the first login.
 
 ## Environment variables
 
@@ -334,7 +333,7 @@ sequences (`product_number_seq`, `bill_number_seq`, `order_number_seq`) created 
 | Inventory | `Category`, `Product`, `StockMovement`, `PurchaseOrder`, `PurchaseOrderItem` |
 | Billing | `Service`, `Bill`, `BillItem`, `BillPayment`, `OpenBill` |
 | Staff | `Employee`, `EmployeeDocument`, `SalaryPayment`, `EmployeeAdvance`, `Attendance` |
-| Shop | `Expense`, `Enquiry` (leads and servicing reminders), `EnquiryCall` |
+| Shop | `Expense`, `Enquiry` (call leads), `EnquiryCall` |
 | Money | `CashDeposit`, `OwnerWithdrawal`; opening balances and owner names live on `BusinessSettings` |
 
 ## Business rules
@@ -388,13 +387,13 @@ dashboard counts.
 
 ### Dates and times
 
-All day boundaries, reports and bill dates use the salon's timezone, `Asia/Kolkata`
+All day boundaries, reports and bill dates use the shop's timezone, `Asia/Kolkata`
 (`src/lib/timezone.ts`), regardless of where the server runs.
 
 Every date column is `timestamptz`, so a stored time is an exact instant. Prisma's pg adapter
 sends times as UTC text without an offset, so database sessions must run in UTC: the migrations
 make UTC the database default and `src/lib/db.ts` asks for it on each connection. In raw SQL,
-read a column as the salon's wall clock with `"createdAt" AT TIME ZONE 'Asia/Kolkata'`.
+read a column as the shop's wall clock with `"createdAt" AT TIME ZONE 'Asia/Kolkata'`.
 
 ## Testing
 
@@ -408,7 +407,7 @@ npm run test:http     # redirects, forged cookies, owner-only routes
 
 The suite covers authentication, permissions, products, the stock ledger, concurrency, billing, bill
 edits, pay-later payments, open bills, bill sharing, returning customers, purchase orders, employees,
-advances, expenses, enquiries, servicing reminders, attendance, profit, cash and bank, and timezones.
+advances, expenses, enquiries, attendance, profit, cash and bank, and timezones.
 
 Integration tests run against a real PostgreSQL database, migrate it automatically and **wipe every
 table in it**. They use `TEST_DATABASE_URL`, or `DATABASE_URL` with `_test` appended to the database
@@ -467,8 +466,18 @@ To report a security issue, contact the repository owner privately instead of op
 
 ## Roadmap
 
-Not in the current version: suppliers, GST invoices, returns and refunds, a separate customer list
-page, appointments, multiple branches, per-employee sales reports, a configurable shop logo, and SMS.
+Planned, in this order:
+
+1. **Tyre details and search by size**: brand, pattern, size, rim, vehicle type, radial/bias, TL/TT/TTF,
+   fitment, ply rating, NSD and material code on each product; find every tyre in a size by typing
+   `1856515` or `185/65 R15`; vehicle number on bills.
+2. **Company price lists**: NDP, purchase price, NLC and MSRP per tyre, price history, warnings when a
+   bill price is above MSRP or below cost, and importing the monthly price list from Excel.
+3. **GST invoices**: shop GSTIN, HSN and rate per category and product, CGST/SGST or IGST, B2B invoices
+   with the customer's GSTIN, invoice numbers per financial year, and GST reports for GSTR-1/3B.
+
+Later: customer credit accounts for fleets, supplier accounts and credit notes, tyre serial numbers and
+warranty claims, old-tyre exchange, returns, multiple branches and SMS.
 
 ## License
 

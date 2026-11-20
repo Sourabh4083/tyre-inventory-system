@@ -1,29 +1,32 @@
 import type { BillDTO } from "@/lib/services/billing";
-import { formatDateTime, formatMoney } from "@/lib/format";
+import { addressLines, formatDateTime, formatMoney } from "@/lib/format";
 import { PAYMENT_LABEL, amountsByMethod, paymentMethodsLabel } from "@/components/app/bill-badges";
 import { cn } from "@/lib/utils";
-import { SHOP_ADDRESS_LINES, SHOP_PHONE } from "@/lib/constants";
+import type { BusinessSettingsData } from "@/lib/services/settings";
 
 /**
  * Receipt layout used on screen and for printing. On print, everything else on the
  * page is hidden and this is centred: slip width on a thermal roll, larger on A4 (see globals.css).
  */
-export function BillReceipt({ bill, businessName, currencySymbol, className }: { bill: BillDTO; businessName: string; currencySymbol: string; className?: string }) {
-  const sym = currencySymbol;
+export function BillReceipt({ bill, settings, className }: { bill: BillDTO; settings: BusinessSettingsData; className?: string }) {
+  const sym = settings.currencySymbol;
   const due = bill.status === "COMPLETED" && Number(bill.balanceDue) > 0;
   const byMethod = amountsByMethod(bill.payments);
+  const address = addressLines(settings.shopAddress);
   return (
     <article className={cn("receipt mx-auto w-full max-w-sm rounded-2xl border bg-card p-5 text-sm shadow-xs print:max-w-none print:rounded-none print:border-0 print:p-0 print:shadow-none", className)} aria-label={`Receipt ${bill.billNumber}`}>
       <header className="receipt-rule border-b-2 pb-3 text-center">
-        <h2 className="font-heading text-xl font-semibold">{businessName}</h2>
-        <address className="mt-1 text-xs leading-snug not-italic">
-          {SHOP_ADDRESS_LINES.map((line) => (
-            <span key={line} className="block">
-              {line}
-            </span>
-          ))}
-          <span className="block font-medium">Phone: {SHOP_PHONE}</span>
-        </address>
+        <h2 className="font-heading text-xl font-semibold">{settings.businessName}</h2>
+        {address.length || settings.shopPhone ? (
+          <address className="mt-1 text-xs leading-snug not-italic">
+            {address.map((line, i) => (
+              <span key={i} className="block">
+                {line}
+              </span>
+            ))}
+            {settings.shopPhone ? <span className="block font-medium">Phone: {settings.shopPhone}</span> : null}
+          </address>
+        ) : null}
         <p className="mt-2 text-[11px] font-medium tracking-[0.2em] text-muted-foreground uppercase">Bill / Receipt</p>
       </header>
 
