@@ -28,7 +28,8 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   const params = await searchParams;
   const showArchived = params.archived === "1" && user.role === "OWNER";
   const stockStatus = STATUSES.has(params.status as StockStatus) ? (params.status as StockStatus) : undefined;
-  const sort = SORTS.has(params.sort as ProductSort) ? (params.sort as ProductSort) : "name";
+  // Left unset when nobody picked one, so a size search lists in-stock and cheapest tyres first.
+  const sort = SORTS.has(params.sort as ProductSort) ? (params.sort as ProductSort) : undefined;
   const vehicleType = VEHICLE_TYPES.some((v) => v.value === params.vehicle) ? (params.vehicle as VehicleType) : undefined;
   const tubeType = TUBE_TYPES.some((v) => v.value === params.tube) ? (params.tube as TubeType) : undefined;
   const fitment = FITMENTS.some((v) => v.value === params.fit) ? (params.fit as Fitment) : undefined;

@@ -243,6 +243,10 @@ export async function listProducts(params: ListProductsParams = {}) {
   const page = Math.max(1, params.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, params.pageSize ?? PAGE_SIZE));
   const search = params.search?.trim() ?? "";
+  // "185/65 r15", "1856515" and "185 65 15" all find the same tyres.
+  const sizeKey = search ? sizeSearchKey(search) : null;
+  // A size typed at the counter with no sort picked: show what can be sold first (see sizeOrder).
+  const counterOrder = Boolean(sizeKey) && !params.sort;
 
   const where: Prisma.ProductWhereInput = {};
   if (params.archivedOnly) where.status = "ARCHIVED";
@@ -255,8 +259,6 @@ export async function listProducts(params: ListProductsParams = {}) {
   if (params.tubeType) where.tubeType = params.tubeType;
   if (params.fitment) where.fitment = params.fitment;
   if (search) {
-    // "185/65 r15", "1856515" and "185 65 15" all find the same tyres.
-    const sizeKey = sizeSearchKey(search);
     where.OR = [
       { name: { contains: search, mode: "insensitive" } },
       { sku: { contains: search, mode: "insensitive" } },
@@ -277,12 +279,22 @@ export async function listProducts(params: ListProductsParams = {}) {
           ? [{ updatedAt: dir }]
           : [{ name: dir }];
 
-  const [rows, total] = await Promise.all([
-    prisma.product.findMany({ where, orderBy, include: productInclude, skip: (page - 1) * pageSize, take: pageSize }),
-    prisma.product.count({ where }),
-  ]);
-
-  let items = rows.map((p) => toProductDTO(p, settings.lowStockThreshold));
+  let items: ProductDTO[];
+  let total: number;
+  if (counterOrder) {
+    // A size matches a handful of tyres, so they are ordered here and then paged.
+    const rows = await prisma.product.findMany({ where, orderBy: [{ name: "asc" }], include: productInclude, take: 1000 });
+    const all = rows.map((p) => toProductDTO(p, settings.lowStockThreshold)).sort(sizeOrder(sizeKey!));
+    total = all.length;
+    items = all.slice((page - 1) * pageSize, page * pageSize);
+  } else {
+    const [rows, count] = await Promise.all([
+      prisma.product.findMany({ where, orderBy, include: productInclude, skip: (page - 1) * pageSize, take: pageSize }),
+      prisma.product.count({ where }),
+    ]);
+    items = rows.map((p) => toProductDTO(p, settings.lowStockThreshold));
+    total = count;
+  }
 
   // Exact barcode / SKU match always floats to the top so scanner input lands on the right product.
   if (search) {
@@ -295,6 +307,27 @@ export async function listProducts(params: ListProductsParams = {}) {
   }
 
   return { items, total, page, pageSize, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
+}
+
+/**
+ * Order for a size search at the counter: the exact size first, the same sizes together,
+ * then in stock before out of stock, then cheapest first. Products without a size go last.
+ */
+function sizeOrder(key: string) {
+  const digits = (p: ProductDTO) => (p.tyreSize ? p.tyreSize.replace(/\D/g, "") : null);
+  const price = (p: ProductDTO) => (p.sellingPrice == null ? Number.POSITIVE_INFINITY : Number(p.sellingPrice));
+  return (a: ProductDTO, b: ProductDTO) => {
+    const ka = digits(a);
+    const kb = digits(b);
+    return (
+      Number(kb === key) - Number(ka === key) ||
+      Number(kb !== null) - Number(ka !== null) ||
+      (ka ?? "").localeCompare(kb ?? "") ||
+      Number(b.quantity > 0) - Number(a.quantity > 0) ||
+      price(a) - price(b) ||
+      a.name.localeCompare(b.name)
+    );
+  };
 }
 
 /** Deduplicated per request (generateMetadata and the page both read it). */
@@ -334,37 +367,6 @@ export async function listBrands(): Promise<string[]> {
 export async function listRimSizes(): Promise<number[]> {
   const rows = await prisma.product.findMany({ where: { status: "ACTIVE", rimInch: { not: null } }, distinct: ["rimInch"], select: { rimInch: true }, orderBy: { rimInch: "asc" } });
   return rows.map((r) => Number(r.rimInch));
-}
-
-export type SizeGroup = { size: string; sizeKey: string; totalQuantity: number; products: ProductDTO[] };
-
-/**
- * The "Find by size" counter screen: every active tyre whose size starts with what was typed,
- * grouped by size, in stock first and cheapest first inside each size.
- */
-export async function findTyresBySize(query: string): Promise<SizeGroup[]> {
-  const key = sizeSearchKey(query) ?? parseTyreSize(query)?.key ?? null;
-  if (!key || key.length < 2) return [];
-  const settings = await getSettings();
-  const rows = await prisma.product.findMany({
-    where: { status: "ACTIVE", sizeKey: { startsWith: key } },
-    include: productInclude,
-    orderBy: [{ sizeKey: "asc" }, { name: "asc" }],
-    take: 200,
-  });
-  const groups = new Map<string, SizeGroup>();
-  for (const row of rows) {
-    const dto = toProductDTO(row, settings.lowStockThreshold);
-    const k = row.sizeKey!;
-    const g = groups.get(k) ?? { size: row.tyreSize ?? k, sizeKey: k, totalQuantity: 0, products: [] };
-    g.products.push(dto);
-    g.totalQuantity += Math.max(0, dto.quantity);
-    groups.set(k, g);
-  }
-  const price = (p: ProductDTO) => (p.sellingPrice == null ? Number.POSITIVE_INFINITY : Number(p.sellingPrice));
-  for (const g of groups.values()) g.products.sort((a, b) => Number(b.quantity > 0) - Number(a.quantity > 0) || price(a) - price(b) || a.name.localeCompare(b.name));
-  // An exact size first, then the rest in size order.
-  return [...groups.values()].sort((a, b) => Number(b.sizeKey === key) - Number(a.sizeKey === key) || a.sizeKey.localeCompare(b.sizeKey));
 }
 
 /* ---------- Mutations ---------- */

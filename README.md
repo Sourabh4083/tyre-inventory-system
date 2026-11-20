@@ -47,10 +47,9 @@ ledger, money is handled in integer paise, and all permissions are enforced on t
 - **Tyre categories**: products in a tyre category need a size; tubes, flaps and other items don't. The
   owner marks which categories hold tyres in Settings.
 - **Search by size**: `185/65 R15`, `185/65r15`, `185 65 15` and `1856515` all find the same tyres, in the
-  product list, on the bill screen and when ordering. The product list also filters by vehicle, brand,
-  rim size, tubeless/tube type and fitment.
-- **Find by Size** (`/inventory/size`): the counter screen. Type the size the customer asks for and see
-  every brand and pattern in that size, in stock and cheapest first, with stock and price.
+  product list, on the bill screen and when ordering. A size search lists the exact size first, in-stock
+  tyres before out-of-stock ones and the cheapest first, unless another sort is picked. The product list
+  also filters by vehicle, brand, rim size, tubeless/tube type and fitment.
 - **Products** with auto-generated numbers (`PRD-000001`), category, unit, unique SKU and barcode, selling
   price, owner-only cost price, location and notes. Products are archived rather than deleted, so history
   is kept.
@@ -480,7 +479,7 @@ To report a security issue, contact the repository owner privately instead of op
 
 ## Roadmap
 
-Done: tyre details, search by size, Find by Size and vehicle numbers on bills.
+Done: tyre details, search by size and vehicle numbers on bills.
 
 Planned, in this order:
 

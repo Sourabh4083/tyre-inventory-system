@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { createProduct, findTyresBySize, listBrands, listProducts, listRimSizes, updateProduct } from "@/lib/services/products";
+import { createProduct, listBrands, listProducts, listRimSizes, updateProduct } from "@/lib/services/products";
 import { createBill, listBills } from "@/lib/services/billing";
 import { saveOpenBill } from "@/lib/services/open-bills";
 import { billCreateSchema, openBillSchema, productCreateSchema } from "@/lib/validation/schemas";
@@ -83,16 +83,22 @@ describe("search by size", () => {
     expect(await listRimSizes()).toEqual(expect.arrayContaining([12, 14, 15, 20]));
   });
 
-  it("groups the Find by size screen by size, in stock and cheapest first", async () => {
-    const groups = await findTyresBySize("185 65 15");
-    expect(groups).toHaveLength(1);
-    expect(groups[0]).toMatchObject({ size: "185/65 R15", totalQuantity: 6 });
-    // In stock first, cheapest first among them (MRF 5800, UX Royale 5950); the out-of-stock Taximax last.
-    expect(groups[0].products.map((p) => p.name)).toEqual(["185/65 R15 MRF ZVTV", "185/65 R15 JK Tyre UX Royale TL", "185/65 R15 Taximax TL"]);
+  it("lists a size search for the counter: exact size, in stock first, cheapest first", async () => {
+    const names = async (search: string, sort?: "name") => (await listProducts({ search, sort })).items.map((p) => p.name);
+    // MRF (5800) and UX Royale (5950) are in stock, cheapest first; the out-of-stock Taximax last.
+    expect(await names("185 65 15")).toEqual(["185/65 R15 MRF ZVTV", "185/65 R15 JK Tyre UX Royale TL", "185/65 R15 Taximax TL"]);
+    // A shorter size keeps each size together.
+    expect(await names("185")).toEqual(["185/65 R15 MRF ZVTV", "185/65 R15 JK Tyre UX Royale TL", "185/65 R15 Taximax TL", "185/70 R14 Ultima"]);
+    // A sort picked on the page still wins.
+    expect(await names("185/65 R15", "name")).toEqual(["185/65 R15 JK Tyre UX Royale TL", "185/65 R15 MRF ZVTV", "185/65 R15 Taximax TL"]);
+  });
 
-    const wider = await findTyresBySize("185");
-    expect(wider.map((g) => g.size)).toEqual(["185/65 R15", "185/70 R14"]);
-    expect(await findTyresBySize("hello")).toEqual([]);
+  it("pages a size search after ordering it", async () => {
+    const first = await listProducts({ search: "185", pageSize: 2, page: 1 });
+    const second = await listProducts({ search: "185", pageSize: 2, page: 2 });
+    expect(first.total).toBe(4);
+    expect(first.pageCount).toBe(2);
+    expect([...first.items, ...second.items].map((p) => p.name)).toEqual(["185/65 R15 MRF ZVTV", "185/65 R15 JK Tyre UX Royale TL", "185/65 R15 Taximax TL", "185/70 R14 Ultima"]);
   });
 });
 

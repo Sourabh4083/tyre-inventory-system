@@ -4,7 +4,7 @@ import type { Permission } from "@/lib/permissions";
 export type NavItem = {
   href: string;
   label: string;
-  icon: "dashboard" | "inventory" | "low" | "out" | "activity" | "users" | "settings" | "scan" | "billing" | "newbill" | "reports" | "pricing" | "employees" | "orders" | "expenses" | "calls" | "attendance" | "size";
+  icon: "dashboard" | "inventory" | "low" | "out" | "activity" | "users" | "settings" | "scan" | "billing" | "newbill" | "reports" | "pricing" | "employees" | "orders" | "expenses" | "calls" | "attendance";
   permission?: Permission;
   /** Marks the route as active for nested paths too. */
   exact?: boolean;
@@ -29,7 +29,6 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Inventory",
     items: [
-      { href: "/inventory/size", label: "Find by Size", icon: "size" },
       { href: "/inventory", label: "All Products", icon: "inventory", exact: true },
       { href: "/inventory/low-stock", label: "Low Stock", icon: "low" },
       { href: "/inventory/out-of-stock", label: "Out of Stock", icon: "out" },

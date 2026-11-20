@@ -187,7 +187,7 @@ export function ProductFilters({
               onChange={(e) => pushParams((p) => (e.target.value === "name" ? p.delete("sort") : p.set("sort", e.target.value)))}
               className="col-span-2 h-12 rounded-xl bg-card lg:w-48"
             >
-              <option value="name">Sort: Name A–Z</option>
+              <option value="name">Sort: Best match</option>
               <option value="quantity">Sort: Quantity (low → high)</option>
               <option value="price">Sort: Price (low → high)</option>
               <option value="updated">Sort: Recently updated</option>
