@@ -105,6 +105,9 @@ export type ProductUpdateInput = z.input<typeof productUpdateSchema>;
 export const productPricesSchema = z.object({
   costPrice: moneyInput,
   sellingPrice: moneyInput,
+  ndp: moneyInput,
+  nlc: moneyInput,
+  msrp: moneyInput,
 });
 export type ProductPricesInput = z.input<typeof productPricesSchema>;
 

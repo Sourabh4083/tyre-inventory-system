@@ -31,8 +31,8 @@ async function loadResult(productId: string, movementId: string): Promise<StockC
  * changes are serialised and every movement records accurate before/after values.
  */
 export async function lockProduct(tx: Prisma.TransactionClient, productId: string) {
-  const rows = await tx.$queryRaw<{ id: string; quantity: number; status: string; name: string; costPrice: string | null }[]>`
-    SELECT id, quantity, status, name, "costPrice"::text AS "costPrice" FROM "Product" WHERE id = ${productId} FOR UPDATE`;
+  const rows = await tx.$queryRaw<{ id: string; quantity: number; status: string; name: string; costPrice: string | null; nlc: string | null }[]>`
+    SELECT id, quantity, status, name, "costPrice"::text AS "costPrice", nlc::text AS nlc FROM "Product" WHERE id = ${productId} FOR UPDATE`;
   const row = rows[0];
   if (!row) throw new AppError("Product not found.", "NOT_FOUND");
   return row;

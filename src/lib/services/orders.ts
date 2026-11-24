@@ -6,6 +6,7 @@ import type { SessionUser } from "@/lib/auth/session";
 import { recordAudit } from "@/lib/services/audit";
 import { applyChange, lockProduct } from "@/lib/services/inventory";
 import { fromPaise, toPaise } from "@/lib/money";
+import { recordPriceChanges } from "@/lib/services/prices";
 import { PAGE_SIZE } from "@/lib/constants";
 import type { OrderCostsData, OrderCreateData, OrderReceiveData } from "@/lib/validation/schemas";
 
@@ -344,6 +345,7 @@ export async function updateOrderCosts(orderId: string, data: OrderCostsData, ac
         const product = await tx.product.findUnique({ where: { id: item.productId }, select: { costPrice: true } });
         if (product && item.quantityReceived > 0 && (product.costPrice === null || product.costPrice.toFixed(2) === booked)) {
           await tx.product.update({ where: { id: item.productId }, data: { costPrice: after } });
+          await recordPriceChanges(tx, { productId: item.productId, before: product, after: { costPrice: after }, source: "ORDER", actorId: actor.id, note: order.orderNumber });
         }
       }
       changes.push(`${item.name} ${before ?? "no cost"} → ${after}`);
@@ -459,6 +461,7 @@ export async function receiveOrder(input: OrderReceiveData, actor: SessionUser):
       // Keep Prices & Margins current with what was actually paid.
       if (item.unitCost && item.unitCost.toFixed(2) !== product.costPrice) {
         await tx.product.update({ where: { id: product.id }, data: { costPrice: item.unitCost } });
+        await recordPriceChanges(tx, { productId: product.id, before: product, after: { costPrice: item.unitCost }, source: "ORDER", actorId: actor.id, note: order.orderNumber });
       }
       await tx.purchaseOrderItem.update({
         where: { id: item.id },

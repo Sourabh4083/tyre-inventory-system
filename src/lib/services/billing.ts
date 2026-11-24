@@ -16,6 +16,7 @@ import { randomBytes } from "node:crypto";
 import { PAGE_SIZE, SHARE_LINK_DAYS } from "@/lib/constants";
 import { maskPhone, phoneKey } from "@/lib/phone";
 import { vehicleKey } from "@/lib/tyre";
+import { costForProfit } from "@/lib/services/prices";
 
 /* ---------- DTOs ---------- */
 
@@ -252,7 +253,8 @@ export async function createBill(data: BillCreateData, actor: SessionUser): Prom
             name: p.name,
             quantity: item.quantity,
             unitPrice: fromPaise(unitPrice),
-            unitCost: p.costPrice,
+            // NLC when the price list gave one, otherwise the purchase price.
+            unitCost: costForProfit(p),
             lineTotal: fromPaise(lineTotal),
             sortOrder: index,
           };
@@ -666,7 +668,7 @@ export async function updateBill(data: BillUpdateData, actor: SessionUser): Prom
           quantity: item.quantity,
           unitPrice: fromPaise(unitPrice),
           // Lines already on the bill keep the cost known at the sale, so their profit does not shift.
-          unitCost: old ? old.unitCost : (p?.costPrice ?? null),
+          unitCost: old ? old.unitCost : p ? costForProfit(p) : null,
           lineTotal: fromPaise(lineTotal),
           sortOrder: index,
         };

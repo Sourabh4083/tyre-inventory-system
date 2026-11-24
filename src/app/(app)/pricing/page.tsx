@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { parsePaging } from "@/lib/paging";
 import { Suspense } from "react";
-import { AlertTriangle, Boxes, Tags, TrendingUp } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, Boxes, FileSpreadsheet, Tags, TrendingUp } from "lucide-react";
 import { requirePermissionPage } from "@/lib/auth/guards";
 import { getSettings } from "@/lib/services/settings";
 import { getPricingSummary, listCategories, listProducts, type ProductSort } from "@/lib/services/products";
@@ -11,6 +12,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { ProductFilters } from "@/components/app/product-filters";
 import { PricingTable } from "@/components/app/pricing-table";
 import { Pagination } from "@/components/app/pagination";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Prices & Margins" };
@@ -19,7 +21,7 @@ type Params = { q?: string; category?: string; sort?: string; page?: string; siz
 const SORTS = new Set<ProductSort>(["name", "quantity", "price", "updated"]);
 
 export default async function PricingPage({ searchParams }: { searchParams: Promise<Params> }) {
-  await requirePermissionPage("product.cost.view");
+  const user = await requirePermissionPage("product.cost.view");
   const params = await searchParams;
   const sort = SORTS.has(params.sort as ProductSort) ? (params.sort as ProductSort) : "name";
   const [settings, categories, summary, result] = await Promise.all([
@@ -55,7 +57,14 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
     <div className="space-y-5">
       <PageHeader
         title="Prices & Margins"
-        description="Cost price, selling price and profit for every product. Only the owner can see this page."
+        description="Cost, selling price and profit for every product. Cost is the NLC from the price list when there is one, otherwise the purchase price. Only the owner can see this page."
+        actions={
+          user.role === "OWNER" ? (
+            <Button size="lg" variant="outline" className="h-11" render={<Link href="/pricing/import" />}>
+              <FileSpreadsheet /> Import price list
+            </Button>
+          ) : null
+        }
       />
 
       <section aria-label="Pricing summary" className="grid grid-cols-2 gap-3 lg:grid-cols-4">

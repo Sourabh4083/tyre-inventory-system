@@ -13,6 +13,7 @@ import type { z } from "zod";
 import type { productCreateSchema, productPricesSchema, productUpdateSchema } from "@/lib/validation/schemas";
 import { fromPaise, toPaise } from "@/lib/money";
 import { parseTyreSize, sizeSearchKey } from "@/lib/tyre";
+import { costForProfit, recordPriceChanges } from "@/lib/services/prices";
 
 /* ---------- DTOs (serialisable for client components) ---------- */
 
@@ -25,8 +26,12 @@ export type ProductDTO = {
   categoryId: string;
   categoryName: string;
   description: string | null;
+  /** Purchase price. Owner only, like the company prices below. */
   costPrice: string | null;
   sellingPrice: string | null;
+  ndp: string | null;
+  nlc: string | null;
+  msrp: string | null;
   quantity: number;
   lowStockThreshold: number | null;
   effectiveThreshold: number;
@@ -97,6 +102,9 @@ export function toProductDTO(p: ProductRow, globalThreshold: number): ProductDTO
     description: p.description,
     costPrice: p.costPrice ? p.costPrice.toString() : null,
     sellingPrice: p.sellingPrice ? p.sellingPrice.toString() : null,
+    ndp: p.ndp?.toString() ?? null,
+    nlc: p.nlc?.toString() ?? null,
+    msrp: p.msrp?.toString() ?? null,
     quantity: p.quantity,
     lowStockThreshold: p.lowStockThreshold,
     effectiveThreshold: threshold,
@@ -161,7 +169,7 @@ export function toMovementDTO(m: MovementRow): MovementDTO {
  * client component must pass through these so a manager's browser never receives it.
  */
 export function productForViewer(dto: ProductDTO, role: Role): ProductDTO {
-  return role === "OWNER" ? dto : { ...dto, costPrice: null };
+  return role === "OWNER" ? dto : { ...dto, costPrice: null, ndp: null, nlc: null, msrp: null };
 }
 
 export function productsForViewer(list: ProductDTO[], role: Role): ProductDTO[] {
@@ -191,7 +199,7 @@ function uniqueError(err: Prisma.PrismaClientKnownRequestError): AppError {
   return new AppError("A product with these details already exists.", "CONFLICT");
 }
 
-async function nextProductNumber(tx: Prisma.TransactionClient) {
+export async function nextProductNumber(tx: Prisma.TransactionClient) {
   const rows = await tx.$queryRaw<{ n: bigint }[]>`SELECT nextval('product_number_seq') AS n`;
   const n = Number(rows[0].n);
   return `PRD-${String(n).padStart(6, "0")}`;
@@ -435,6 +443,13 @@ export async function createProduct(input: CreateInput, actor: SessionUser): Pro
         },
         include: productInclude,
       });
+      await recordPriceChanges(tx, {
+        productId: product.id,
+        before: {},
+        after: { costPrice: input.costPrice, sellingPrice: input.sellingPrice },
+        source: "MANUAL",
+        actorId: actor.id,
+      });
       if (input.startingQuantity > 0) {
         await tx.stockMovement.create({
           data: {
@@ -513,6 +528,15 @@ export async function updateProduct(id: string, input: UpdateInput, actor: Sessi
       }
 
       const product = await tx.product.update({ where: { id }, data, include: productInclude });
+      if (actor.role === "OWNER") {
+        await recordPriceChanges(tx, {
+          productId: id,
+          before: existing,
+          after: { costPrice: input.costPrice, sellingPrice: input.sellingPrice },
+          source: "MANUAL",
+          actorId: actor.id,
+        });
+      }
       await recordAudit(tx, {
         action: "PRODUCT_UPDATED",
         entityType: "Product",
@@ -539,21 +563,20 @@ export async function updateProductPrices(id: string, input: PricesInput, actor:
   const updated = await prisma.$transaction(async (tx) => {
     const existing = await tx.product.findUnique({ where: { id } });
     if (!existing) throw new AppError("Product not found.", "NOT_FOUND");
-    const changed: string[] = [];
-    if ((existing.costPrice?.toString() ?? null) !== input.costPrice) changed.push("costPrice");
-    if ((existing.sellingPrice?.toString() ?? null) !== input.sellingPrice) changed.push("sellingPrice");
+    const prices = { costPrice: input.costPrice, sellingPrice: input.sellingPrice, ndp: input.ndp, nlc: input.nlc, msrp: input.msrp };
     const product = await tx.product.update({
       where: { id },
-      data: { costPrice: input.costPrice, sellingPrice: input.sellingPrice, updatedById: actor.id },
+      data: { ...prices, updatedById: actor.id },
       include: productInclude,
     });
-    if (changed.length) {
+    const changed = await recordPriceChanges(tx, { productId: id, before: existing, after: prices, source: "MANUAL", actorId: actor.id });
+    if (changed) {
       await recordAudit(tx, {
         action: "PRODUCT_UPDATED",
         entityType: "Product",
         entityId: id,
-        summary: `Changed prices of ${product.productNumber} "${product.name}" (${changed.join(", ")})`,
-        metadata: { changedFields: changed, costPrice: input.costPrice, sellingPrice: input.sellingPrice },
+        summary: `Changed prices of ${product.productNumber} "${product.name}"`,
+        metadata: prices,
         actorId: actor.id,
       });
     }
@@ -576,7 +599,7 @@ export type PricingSummary = {
 export async function getPricingSummary(): Promise<PricingSummary> {
   const rows = await prisma.product.findMany({
     where: { status: "ACTIVE" },
-    select: { quantity: true, costPrice: true, sellingPrice: true },
+    select: { quantity: true, costPrice: true, nlc: true, sellingPrice: true },
   });
   let missingCost = 0;
   let missingSelling = 0;
@@ -584,7 +607,8 @@ export async function getPricingSummary(): Promise<PricingSummary> {
   let atCost = 0;
   let atSelling = 0;
   for (const r of rows) {
-    const cost = r.costPrice ? toPaise(r.costPrice.toString()) : null;
+    const c = costForProfit(r);
+    const cost = c === null ? null : toPaise(c);
     const selling = r.sellingPrice ? toPaise(r.sellingPrice.toString()) : null;
     if (cost === null) missingCost++;
     if (selling === null) missingSelling++;

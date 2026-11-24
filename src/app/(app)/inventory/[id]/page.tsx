@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Archive, History, Truck } from "lucide-react";
+import { ArrowLeft, Archive, History, Tags, Truck } from "lucide-react";
 import { requireUserPage } from "@/lib/auth/guards";
 import { getSettings } from "@/lib/services/settings";
 import { getProduct, movementsForViewer, productForViewer } from "@/lib/services/products";
 import { can } from "@/lib/permissions";
 import { computeMargin } from "@/lib/money";
+import { PRICE_FIELD_LABEL, costForProfit, listPriceChanges } from "@/lib/services/prices";
 import { listMovements } from "@/lib/services/inventory";
 import { parsePaging } from "@/lib/paging";
 import { getPendingOrdersForProduct } from "@/lib/services/orders";
@@ -37,15 +38,17 @@ export default async function ProductDetailPage({
   const from = query.from;
   const showCost = can(user.role, "product.cost.view");
   const showHistory = can(user.role, "stock.history.view");
-  const [settings, found, history, onOrder] = await Promise.all([
+  const [settings, found, history, onOrder, priceChanges] = await Promise.all([
     getSettings(),
     getProduct(id),
     showHistory ? listMovements({ productId: id, ...parsePaging(query, 10) }) : null,
     can(user.role, "order.view") ? getPendingOrdersForProduct(id) : [],
+    showCost ? listPriceChanges(id, 20) : [],
   ]);
   if (!found) notFound();
   const product = productForViewer(found, user.role);
-  const margin = showCost ? computeMargin(product.costPrice, product.sellingPrice) : null;
+  const margin = showCost ? computeMargin(costForProfit(product), product.sellingPrice) : null;
+  const sym = settings.currencySymbol;
 
   const tyreFacts: { label: string; value: React.ReactNode }[] = product.tyreSize
     ? [
@@ -72,7 +75,10 @@ export default async function ProductDetailPage({
     { label: "Location", value: product.location ?? "—" },
     ...(showCost
       ? [
-          { label: "Cost price", value: formatMoney(product.costPrice, settings.currencySymbol) },
+          { label: "Purchase price", value: formatMoney(product.costPrice, sym) },
+          ...(product.nlc ? [{ label: "NLC (cost for profit)", value: formatMoney(product.nlc, sym) }] : []),
+          ...(product.ndp ? [{ label: "NDP", value: formatMoney(product.ndp, sym) }] : []),
+          ...(product.msrp ? [{ label: "MSRP", value: formatMoney(product.msrp, sym) }] : []),
           {
             label: "Profit per unit",
             value:
@@ -189,6 +195,30 @@ export default async function ProductDetailPage({
               {product.createdByName ? ` by ${product.createdByName}` : ""}
             </p>
           </section>
+
+          {showCost && priceChanges.length ? (
+            <section className="rounded-2xl border bg-card p-5 shadow-xs sm:p-6" aria-labelledby="price-history-heading">
+              <h2 id="price-history-heading" className="flex items-center gap-2 font-heading text-lg">
+                <Tags className="size-4.5 text-primary" /> Price history
+              </h2>
+              <ul className="mt-3 divide-y text-sm">
+                {priceChanges.map((c) => (
+                  <li key={c.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-2">
+                    <span>
+                      <span className="font-medium">{PRICE_FIELD_LABEL[c.field]}</span>{" "}
+                      <span className="tabular-nums text-muted-foreground">{c.oldValue ? formatMoney(c.oldValue, sym) : "none"}</span>
+                      {" → "}
+                      <span className="font-medium tabular-nums">{c.newValue ? formatMoney(c.newValue, sym) : "none"}</span>
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDateTime(c.createdAt)} ·{" "}
+                      {c.source === "PRICE_LIST" ? `price list${c.note ? ` ${c.note}` : ""}` : c.source === "ORDER" ? `order ${c.note ?? ""}` : (c.changedByName ?? "—")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
         </div>
 
         {history ? (
