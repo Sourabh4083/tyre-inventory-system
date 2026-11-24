@@ -143,7 +143,9 @@ export function OrderForm({
   const totals = useMemo(
     () => ({
       units: lines.reduce((n, l) => n + l.quantity, 0),
-      cost: lines.reduce((n, l) => n + toPaise(l.unitCost) * l.quantity, 0) + toPaise(cgst) + toPaise(sgst),
+      items: lines.reduce((n, l) => n + toPaise(l.unitCost) * l.quantity, 0),
+      gst: toPaise(cgst) + toPaise(sgst),
+      missingCost: lines.filter((l) => toPaise(l.unitCost) <= 0).length,
     }),
     [lines, cgst, sgst],
   );
@@ -226,7 +228,10 @@ export function OrderForm({
               <li key={l.productId} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:px-5">
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{l.name}</p>
-                  <p className="text-xs text-muted-foreground">{l.inStock} in stock now</p>
+                  <p className="text-xs text-muted-foreground">
+                    {l.inStock} in stock now
+                    {showCost && toPaise(l.unitCost) > 0 ? ` · ${formatMoney(fromPaise(toPaise(l.unitCost) * l.quantity), currencySymbol)} for ${l.quantity}` : ""}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   {costsOnly ? (
@@ -306,10 +311,11 @@ export function OrderForm({
         </Field>
       </section>
 
+      {showCost && lines.length > 0 ? <OrderTotal totals={totals} cgst={cgst} sgst={sgst} currencySymbol={currencySymbol} paying={paidOnOrder && !costsOnly} /> : null}
+
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
           {lines.length} {lines.length === 1 ? "product" : "products"} · {totals.units} {totals.units === 1 ? "unit" : "units"}
-          {showCost && totals.cost > 0 ?` · about ${formatMoney(fromPaise(totals.cost), currencySymbol)}` : ""}
         </p>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -364,6 +370,47 @@ export function OrderForm({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/** Owner-only: what this order costs, items plus GST, so the owner knows what they are paying. */
+function OrderTotal({
+  totals,
+  cgst,
+  sgst,
+  currencySymbol,
+  paying,
+}: {
+  totals: { items: number; gst: number; missingCost: number };
+  cgst: string;
+  sgst: string;
+  currencySymbol: string;
+  paying: boolean;
+}) {
+  const money = (paise: number) => formatMoney(fromPaise(paise), currencySymbol);
+  const rows: [string, number][] = [["Products", totals.items]];
+  if (toPaise(cgst) > 0) rows.push(["CGST", toPaise(cgst)]);
+  if (toPaise(sgst) > 0) rows.push(["SGST", toPaise(sgst)]);
+  return (
+    <section className="rounded-2xl border border-primary/30 bg-primary/5 p-4 shadow-xs sm:p-5" aria-label="Order total">
+      <dl className="space-y-1.5 text-sm">
+        {rows.map(([label, paise]) => (
+          <div key={label} className="flex justify-between text-muted-foreground">
+            <dt>{label}</dt>
+            <dd className="tabular-nums">{money(paise)}</dd>
+          </div>
+        ))}
+        <div className="flex items-baseline justify-between border-t pt-2">
+          <dt className="font-heading text-lg">{paying ? "Total to pay" : "Order total"}</dt>
+          <dd className="text-2xl font-semibold tabular-nums">{money(totals.items + totals.gst)}</dd>
+        </div>
+      </dl>
+      {totals.missingCost > 0 ? (
+        <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
+          {totals.missingCost === 1 ? "1 product has" : `${totals.missingCost} products have`} no cost yet, so {totals.missingCost === 1 ? "it is" : "they are"} not in the total. Type the cost per unit to include {totals.missingCost === 1 ? "it" : "them"}.
+        </p>
+      ) : null}
+    </section>
   );
 }
 
